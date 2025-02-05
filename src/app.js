@@ -1,4 +1,4 @@
-// Copyright(c) 2019-2024 pypy, Natsumi and individual contributors.
+// Copyright(c) 2019-2025 pypy, Natsumi and individual contributors.
 // All rights reserved.
 //
 // This work is licensed under the terms of the MIT license.
@@ -2155,8 +2155,10 @@ console.log(`isLinux: ${LINUX}`);
             }
         } catch (err) {
             console.error(err);
+        } finally {
+            this.isNotificationsLoading = false;
+            $app.notificationInitStatus = true;
         }
-        this.isNotificationsLoading = false;
     };
 
     /** @typedef {{
@@ -4041,6 +4043,7 @@ console.log(`isLinux: ${LINUX}`);
         }
         this.isLoggedIn = false;
         $app.friendLogInitStatus = false;
+        $app.notificationInitStatus = false;
     });
 
     API.$on('LOGIN', function (args) {
@@ -5542,6 +5545,7 @@ console.log(`isLinux: ${LINUX}`);
         $app.feedTable.data = [];
         $app.feedSessionTable = [];
         $app.friendLogInitStatus = false;
+        $app.notificationInitStatus = false;
         await database.initUserTables(args.json.id);
         $app.$refs.menu.activeIndex = 'feed';
         await $app.updateDatabaseVersion();
@@ -5555,12 +5559,8 @@ console.log(`isLinux: ${LINUX}`);
         await $app.feedTableLookup();
         // eslint-disable-next-line require-atomic-updates
         $app.notificationTable.data = await database.getNotifications();
-        await this.refreshNotifications();
-        await $app.loadCurrentUserGroups(
-            args.json.id,
-            args.json?.presence?.groups
-        );
-        await $app.getCurrentUserGroups();
+        this.refreshNotifications();
+        $app.loadCurrentUserGroups(args.json.id, args.json?.presence?.groups);
         try {
             if (
                 await configRepository.getBool(`friendLogInit_${args.json.id}`)
@@ -7201,6 +7201,21 @@ console.log(`isLinux: ${LINUX}`);
         return this.favoriteFriendsSorted;
     };
 
+    $app.computed.groupedByGroupKeyFavoriteFriends = function () {
+        const groupedByGroupKeyFavoriteFriends = {};
+
+        this.favoriteFriends.forEach((friend) => {
+            if (friend.groupKey) {
+                if (!groupedByGroupKeyFavoriteFriends[friend.groupKey]) {
+                    groupedByGroupKeyFavoriteFriends[friend.groupKey] = [];
+                }
+                groupedByGroupKeyFavoriteFriends[friend.groupKey].push(friend);
+            }
+        });
+
+        return groupedByGroupKeyFavoriteFriends;
+    };
+
     $app.computed.favoriteWorlds = function () {
         if (this.sortFavoriteWorlds) {
             this.sortFavoriteWorlds = false;
@@ -7212,6 +7227,21 @@ console.log(`isLinux: ${LINUX}`);
         return this.favoriteWorldsSorted;
     };
 
+    $app.computed.groupedByGroupKeyFavoriteWorlds = function () {
+        const groupedByGroupKeyFavoriteWorlds = {};
+
+        this.favoriteWorlds.forEach((world) => {
+            if (world.groupKey) {
+                if (!groupedByGroupKeyFavoriteWorlds[world.groupKey]) {
+                    groupedByGroupKeyFavoriteWorlds[world.groupKey] = [];
+                }
+                groupedByGroupKeyFavoriteWorlds[world.groupKey].push(world);
+            }
+        });
+
+        return groupedByGroupKeyFavoriteWorlds;
+    };
+
     $app.computed.favoriteAvatars = function () {
         if (this.sortFavoriteAvatars) {
             this.sortFavoriteAvatars = false;
@@ -7221,6 +7251,20 @@ console.log(`isLinux: ${LINUX}`);
             return this.favoriteAvatars_;
         }
         return this.favoriteAvatarsSorted;
+    };
+
+    $app.computed.groupedByGroupKeyFavoriteAvatars = function () {
+        const groupedByGroupKeyFavoriteAvatars = {};
+        this.favoriteAvatars.forEach((avatar) => {
+            if (avatar.groupKey) {
+                if (!groupedByGroupKeyFavoriteAvatars[avatar.groupKey]) {
+                    groupedByGroupKeyFavoriteAvatars[avatar.groupKey] = [];
+                }
+                groupedByGroupKeyFavoriteAvatars[avatar.groupKey].push(avatar);
+            }
+        });
+
+        return groupedByGroupKeyFavoriteAvatars;
     };
 
     // #endregion
@@ -7318,6 +7362,7 @@ console.log(`isLinux: ${LINUX}`);
     });
 
     $app.data.friendLogInitStatus = false;
+    $app.data.notificationInitStatus = false;
 
     $app.methods.initFriendLog = async function (currentUser) {
         this.refreshFriends(currentUser, true);
@@ -7764,7 +7809,7 @@ console.log(`isLinux: ${LINUX}`);
             ) {
                 database.addNotificationToDatabase(ref);
             }
-            if ($app.friendLogInitStatus) {
+            if ($app.friendLogInitStatus && $app.notificationInitStatus) {
                 if (
                     $app.notificationTable.filters[0].value.length === 0 ||
                     $app.notificationTable.filters[0].value.includes(ref.type)
@@ -7909,10 +7954,12 @@ console.log(`isLinux: ${LINUX}`);
         'VRCX_feedTableVIPFilter',
         false
     );
-    $app.data.gameLogTable.vip = await configRepository.getBool(
-        'VRCX_gameLogTableVIPFilter',
-        false
-    );
+    $app.data.gameLogTable.vip = false;
+    // gameLog loads before favorites
+    // await configRepository.getBool(
+    //     'VRCX_gameLogTableVIPFilter',
+    //     false
+    // );
     $app.data.gameLogTable.filter = JSON.parse(
         await configRepository.getString('VRCX_gameLogTableFilters', '[]')
     );
@@ -9993,7 +10040,7 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
         this.$nextTick(() => $app.adjustDialogZ(this.$refs.userDialog.$el));
-        var D = this.userDialog;
+        const D = this.userDialog;
         D.id = userId;
         D.treeData = [];
         D.memo = '';
@@ -10002,12 +10049,11 @@ console.log(`isLinux: ${LINUX}`);
         this.getUserMemo(userId).then((memo) => {
             if (memo.userId === userId) {
                 D.memo = memo.memo;
-                var ref = this.friends.get(userId);
+                const ref = this.friends.get(userId);
                 if (ref) {
                     ref.memo = String(memo.memo || '');
                     if (memo.memo) {
-                        var array = memo.memo.split('\n');
-                        ref.$nickName = array[0];
+                        ref.$nickName = memo.memo.split('\n')[0];
                     } else {
                         ref.$nickName = '';
                     }
@@ -10074,172 +10120,187 @@ console.log(`isLinux: ${LINUX}`);
             })
             .then((args) => {
                 if (args.ref.id === D.id) {
-                    D.loading = false;
-                    D.ref = args.ref;
-                    D.friend = this.friends.get(D.id);
-                    D.isFriend = Boolean(D.friend);
-                    D.note = String(D.ref.note || '');
-                    D.incomingRequest = false;
-                    D.outgoingRequest = false;
-                    D.isBlock = false;
-                    D.isMute = false;
-                    D.isInteractOff = false;
-                    D.isMuteChat = false;
-                    for (var ref of API.cachedPlayerModerations.values()) {
-                        if (
-                            ref.targetUserId === D.id &&
-                            ref.sourceUserId === API.currentUser.id
-                        ) {
-                            if (ref.type === 'block') {
-                                D.isBlock = true;
-                            } else if (ref.type === 'mute') {
-                                D.isMute = true;
-                            } else if (ref.type === 'hideAvatar') {
-                                D.isHideAvatar = true;
-                            } else if (ref.type === 'interactOff') {
-                                D.isInteractOff = true;
-                            } else if (ref.type === 'muteChat') {
-                                D.isMuteChat = true;
+                    requestAnimationFrame(() => {
+                        D.ref = args.ref;
+                        D.friend = this.friends.get(D.id);
+                        D.isFriend = Boolean(D.friend);
+                        D.note = String(D.ref.note || '');
+                        D.incomingRequest = false;
+                        D.outgoingRequest = false;
+                        D.isBlock = false;
+                        D.isMute = false;
+                        D.isInteractOff = false;
+                        D.isMuteChat = false;
+                        for (const ref of API.cachedPlayerModerations.values()) {
+                            if (
+                                ref.targetUserId === D.id &&
+                                ref.sourceUserId === API.currentUser.id
+                            ) {
+                                if (ref.type === 'block') {
+                                    D.isBlock = true;
+                                } else if (ref.type === 'mute') {
+                                    D.isMute = true;
+                                } else if (ref.type === 'hideAvatar') {
+                                    D.isHideAvatar = true;
+                                } else if (ref.type === 'interactOff') {
+                                    D.isInteractOff = true;
+                                } else if (ref.type === 'muteChat') {
+                                    D.isMuteChat = true;
+                                }
                             }
                         }
-                    }
-                    D.isFavorite = API.cachedFavoritesByObjectId.has(D.id);
-                    if (D.ref.friendRequestStatus === 'incoming') {
-                        D.incomingRequest = true;
-                    } else if (D.ref.friendRequestStatus === 'outgoing') {
-                        D.outgoingRequest = true;
-                    }
-                    this.applyUserDialogLocation(true);
-                    if (this.$refs.userDialogTabs.currentName === '0') {
-                        this.userDialogLastActiveTab = $t(
-                            'dialog.user.info.header'
-                        );
-                    } else if (this.$refs.userDialogTabs.currentName === '1') {
-                        this.userDialogLastActiveTab = $t(
-                            'dialog.user.groups.header'
-                        );
-                        if (this.userDialogLastGroup !== userId) {
-                            this.userDialogLastGroup = userId;
-                            this.getUserGroups(userId);
+                        D.isFavorite = API.cachedFavoritesByObjectId.has(D.id);
+                        if (D.ref.friendRequestStatus === 'incoming') {
+                            D.incomingRequest = true;
+                        } else if (D.ref.friendRequestStatus === 'outgoing') {
+                            D.outgoingRequest = true;
                         }
-                    } else if (this.$refs.userDialogTabs.currentName === '2') {
-                        this.userDialogLastActiveTab = $t(
-                            'dialog.user.worlds.header'
-                        );
-                        this.setUserDialogWorlds(userId);
-                        if (this.userDialogLastWorld !== userId) {
-                            this.userDialogLastWorld = userId;
-                            this.refreshUserDialogWorlds();
+                        this.applyUserDialogLocation(true);
+
+                        // init last acitve tab data
+                        if (this.$refs.userDialogTabs.currentName === '0') {
+                            this.userDialogLastActiveTab = $t(
+                                'dialog.user.info.header'
+                            );
+                        } else if (
+                            this.$refs.userDialogTabs.currentName === '1'
+                        ) {
+                            this.userDialogLastActiveTab = $t(
+                                'dialog.user.groups.header'
+                            );
+                            if (this.userDialogLastGroup !== userId) {
+                                this.userDialogLastGroup = userId;
+                                this.getUserGroups(userId);
+                            }
+                        } else if (
+                            this.$refs.userDialogTabs.currentName === '2'
+                        ) {
+                            this.userDialogLastActiveTab = $t(
+                                'dialog.user.worlds.header'
+                            );
+                            this.setUserDialogWorlds(userId);
+                            if (this.userDialogLastWorld !== userId) {
+                                this.userDialogLastWorld = userId;
+                                this.refreshUserDialogWorlds();
+                            }
+                        } else if (
+                            this.$refs.userDialogTabs.currentName === '3'
+                        ) {
+                            this.userDialogLastActiveTab = $t(
+                                'dialog.user.favorite_worlds.header'
+                            );
+                            if (this.userDialogLastFavoriteWorld !== userId) {
+                                this.userDialogLastFavoriteWorld = userId;
+                                this.getUserFavoriteWorlds(userId);
+                            }
+                        } else if (
+                            this.$refs.userDialogTabs.currentName === '4'
+                        ) {
+                            this.userDialogLastActiveTab = $t(
+                                'dialog.user.avatars.header'
+                            );
+                            this.setUserDialogAvatars(userId);
+                            this.userDialogLastAvatar = userId;
+                            if (userId === API.currentUser.id) {
+                                this.refreshUserDialogAvatars();
+                            }
+                            this.setUserDialogAvatarsRemote(userId);
+                        } else if (
+                            this.$refs.userDialogTabs.currentName === '5'
+                        ) {
+                            this.userDialogLastActiveTab = $t(
+                                'dialog.user.json.header'
+                            );
+                            this.refreshUserDialogTreeData();
                         }
-                    } else if (this.$refs.userDialogTabs.currentName === '3') {
-                        this.userDialogLastActiveTab = $t(
-                            'dialog.user.favorite_worlds.header'
-                        );
-                        if (this.userDialogLastFavoriteWorld !== userId) {
-                            this.userDialogLastFavoriteWorld = userId;
-                            this.getUserFavoriteWorlds(userId);
+                        // init last acitve tab data - end
+
+                        if (args.cache) {
+                            API.getUser(args.params);
                         }
-                    } else if (this.$refs.userDialogTabs.currentName === '4') {
-                        this.userDialogLastActiveTab = $t(
-                            'dialog.user.avatars.header'
-                        );
-                        this.setUserDialogAvatars(userId);
-                        this.userDialogLastAvatar = userId;
-                        if (userId === API.currentUser.id) {
-                            this.refreshUserDialogAvatars();
+                        let inCurrentWorld = false;
+                        if (this.lastLocation.playerList.has(D.ref.id)) {
+                            inCurrentWorld = true;
                         }
-                        this.setUserDialogAvatarsRemote(userId);
-                    } else if (this.$refs.userDialogTabs.currentName === '5') {
-                        this.userDialogLastActiveTab = $t(
-                            'dialog.user.json.header'
-                        );
-                        this.refreshUserDialogTreeData();
-                    }
-                    if (args.cache) {
-                        API.getUser(args.params);
-                    }
-                    var inCurrentWorld = false;
-                    if (this.lastLocation.playerList.has(D.ref.id)) {
-                        inCurrentWorld = true;
-                    }
-                    if (userId !== API.currentUser.id) {
-                        database
-                            .getUserStats(D.ref, inCurrentWorld)
-                            .then((ref1) => {
-                                if (ref1.userId === D.id) {
-                                    D.lastSeen = ref1.lastSeen;
-                                    D.joinCount = ref1.joinCount;
-                                    D.timeSpent = ref1.timeSpent;
-                                }
-                                var displayNameMap = ref1.previousDisplayNames;
-                                this.friendLogTable.data.forEach((ref2) => {
-                                    if (ref2.userId === D.id) {
-                                        if (ref2.type === 'DisplayName') {
-                                            displayNameMap.set(
-                                                ref2.previousDisplayName,
-                                                ref2.created_at
-                                            );
-                                        }
-                                        if (!D.dateFriended) {
-                                            if (ref2.type === 'Unfriend') {
-                                                D.unFriended = true;
-                                                if (!this.hideUnfriends) {
+                        if (userId !== API.currentUser.id) {
+                            database
+                                .getUserStats(D.ref, inCurrentWorld)
+                                .then((ref1) => {
+                                    if (ref1.userId === D.id) {
+                                        D.lastSeen = ref1.lastSeen;
+                                        D.joinCount = ref1.joinCount;
+                                        D.timeSpent = ref1.timeSpent;
+                                    }
+                                    let displayNameMap =
+                                        ref1.previousDisplayNames;
+                                    this.friendLogTable.data.forEach((ref2) => {
+                                        if (ref2.userId === D.id) {
+                                            if (ref2.type === 'DisplayName') {
+                                                displayNameMap.set(
+                                                    ref2.previousDisplayName,
+                                                    ref2.created_at
+                                                );
+                                            }
+                                            if (!D.dateFriended) {
+                                                if (ref2.type === 'Unfriend') {
+                                                    D.unFriended = true;
+                                                    if (!this.hideUnfriends) {
+                                                        D.dateFriended =
+                                                            ref2.created_at;
+                                                    }
+                                                }
+                                                if (ref2.type === 'Friend') {
+                                                    D.unFriended = false;
                                                     D.dateFriended =
                                                         ref2.created_at;
                                                 }
                                             }
-                                            if (ref2.type === 'Friend') {
-                                                D.unFriended = false;
-                                                D.dateFriended =
-                                                    ref2.created_at;
+                                            if (
+                                                ref2.type === 'Friend' ||
+                                                (ref2.type === 'Unfriend' &&
+                                                    !this.hideUnfriends)
+                                            ) {
+                                                D.dateFriendedInfo.push(ref2);
                                             }
                                         }
-                                        if (
-                                            ref2.type === 'Friend' ||
-                                            (ref2.type === 'Unfriend' &&
-                                                !this.hideUnfriends)
-                                        ) {
-                                            D.dateFriendedInfo.push(ref2);
-                                        }
-                                    }
+                                    });
+                                    const displayNameMapSorted = new Map(
+                                        [...displayNameMap.entries()].sort(
+                                            (a, b) => b[1] - a[1]
+                                        )
+                                    );
+                                    D.previousDisplayNames = Array.from(
+                                        displayNameMapSorted.keys()
+                                    );
                                 });
-                                var displayNameMapSorted = new Map(
-                                    [...displayNameMap.entries()].sort(
-                                        (a, b) => b[1] - a[1]
-                                    )
-                                );
-                                D.previousDisplayNames = Array.from(
-                                    displayNameMapSorted.keys()
-                                );
-                            });
-                        AppApi.GetVRChatUserModeration(
-                            API.currentUser.id,
-                            userId
-                        ).then((result) => {
-                            D.avatarModeration = result;
-                            if (result === 4) {
-                                D.isHideAvatar = true;
-                            } else if (result === 5) {
-                                D.isShowAvatar = true;
-                            }
-                        });
-                    } else {
-                        database
-                            .getUserStats(D.ref, inCurrentWorld)
-                            .then((ref1) => {
-                                if (ref1.userId === D.id) {
-                                    D.lastSeen = ref1.lastSeen;
-                                    D.joinCount = ref1.joinCount;
-                                    D.timeSpent = ref1.timeSpent;
+                            AppApi.GetVRChatUserModeration(
+                                API.currentUser.id,
+                                userId
+                            ).then((result) => {
+                                D.avatarModeration = result;
+                                if (result === 4) {
+                                    D.isHideAvatar = true;
+                                } else if (result === 5) {
+                                    D.isShowAvatar = true;
                                 }
                             });
-                    }
-                    API.getRepresentedGroup({ userId }).then((args1) => {
-                        D.representedGroup = args1.json;
-                        return args1;
+                        } else {
+                            database
+                                .getUserStats(D.ref, inCurrentWorld)
+                                .then((ref1) => {
+                                    if (ref1.userId === D.id) {
+                                        D.lastSeen = ref1.lastSeen;
+                                        D.joinCount = ref1.joinCount;
+                                        D.timeSpent = ref1.timeSpent;
+                                    }
+                                });
+                        }
+                        API.getRepresentedGroup({ userId }).then((args1) => {
+                            D.representedGroup = args1.json;
+                        });
+                        D.loading = false;
                     });
                 }
-                return args;
             });
         this.showUserDialogHistory.delete(userId);
         this.showUserDialogHistory.add(userId);
@@ -16595,12 +16656,14 @@ console.log(`isLinux: ${LINUX}`);
             },
             cache_directory: {
                 name: $t('dialog.config_json.cache_directory'),
-                default: '%AppData%\\..\\LocalLow\\VRChat\\VRChat'
+                default: '%AppData%\\..\\LocalLow\\VRChat\\VRChat',
+                folderBrowser: true
             },
             picture_output_folder: {
                 name: $t('dialog.config_json.picture_directory'),
                 // my pictures folder
-                default: `%UserProfile%\\Pictures\\VRChat`
+                default: `%UserProfile%\\Pictures\\VRChat`,
+                folderBrowser: true
             },
             // dynamic_bone_max_affected_transform_count: {
             //     name: 'Dynamic Bones Limit Max Transforms (0 disable all transforms)',
@@ -16630,6 +16693,20 @@ console.log(`isLinux: ${LINUX}`);
         if (!this.VRChatUsedCacheSize) {
             this.getVRChatCacheSize();
         }
+    };
+
+    $app.methods.openConfigFolderBrowser = async function (value) {
+        var oldPath = this.VRChatConfigFile[value];
+        var newPath = await this.folderSelectorDialog(oldPath);
+        if (newPath) {
+            this.VRChatConfigFile[value] = newPath;
+        }
+        this.redrawVRChatConfigDialog();
+    };
+
+    $app.methods.redrawVRChatConfigDialog = function () {
+        this.VRChatConfigDialog.visible = false;
+        this.VRChatConfigDialog.visible = true;
     };
 
     $app.methods.saveVRChatConfigFile = function () {
@@ -16716,11 +16793,13 @@ console.log(`isLinux: ${LINUX}`);
     $app.methods.setVRChatCameraResolution = function (res) {
         this.VRChatConfigFile.camera_res_height = res.height;
         this.VRChatConfigFile.camera_res_width = res.width;
+        this.redrawVRChatConfigDialog();
     };
 
     $app.methods.setVRChatScreenshotResolution = function (res) {
         this.VRChatConfigFile.screenshot_res_height = res.height;
         this.VRChatConfigFile.screenshot_res_width = res.width;
+        this.redrawVRChatConfigDialog();
     };
 
     $app.methods.getVRChatSpoutResolution = function () {
@@ -16737,6 +16816,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.methods.setVRChatSpoutResolution = function (res) {
         this.VRChatConfigFile.camera_spout_res_height = res.height;
         this.VRChatConfigFile.camera_spout_res_width = res.width;
+        this.redrawVRChatConfigDialog();
     };
 
     // Auto Launch Shortcuts
@@ -17603,7 +17683,9 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.methods.getUserFavoriteWorlds = async function (userId) {
         this.userDialog.isFavoriteWorldsLoading = true;
-        this.$refs.favoriteWorlds.currentName = '0'; // select first tab
+        if (typeof this.$refs.favoriteWorlds !== 'undefined') {
+            this.$refs.favoriteWorlds.currentName = '0'; // select first tab
+        }
         this.userFavoriteWorlds = [];
         var worldLists = [];
         var params = {
@@ -17754,19 +17836,6 @@ console.log(`isLinux: ${LINUX}`);
         }
         await this.sortCurrentUserGroups();
         this.userDialog.isGroupsLoading = false;
-    };
-
-    $app.methods.getCurrentUserGroups = async function () {
-        var args = await API.getGroups({ userId: API.currentUser.id });
-        API.currentUserGroups.clear();
-        for (var group of args.json) {
-            var ref = API.applyGroup(group);
-            if (!API.currentUserGroups.has(group.id)) {
-                API.currentUserGroups.set(group.id, ref);
-            }
-        }
-        await API.getGroupPermissions({ userId: API.currentUser.id });
-        this.saveCurrentUserGroups();
     };
 
     $app.data.inGameGroupOrder = [];
@@ -21011,9 +21080,7 @@ console.log(`isLinux: ${LINUX}`);
         ''
     );
 
-    $app.data.userGeneratedContentDialog = {
-        visible: false
-    };
+    $app.data.folderSelectorDialogVisible = false;
 
     $app.methods.setUGCFolderPath = async function (path) {
         await configRepository.setString('VRCX_userGeneratedContentPath', path);
@@ -21031,24 +21098,27 @@ console.log(`isLinux: ${LINUX}`);
         await AppApi.OpenUGCPhotosFolder(this.ugcFolderPath);
     };
 
-    $app.methods.openUGCFolderSelector = async function () {
-        var D = this.userGeneratedContentDialog;
-
-        if (D.visible) return;
-
-        D.visible = true;
-        var newUGCFolder;
-        if (LINUX) {
-            newUGCFolder = await window.electron.openDirectoryDialog();
-        } else {
-            newUGCFolder = await AppApi.OpenFolderSelectorDialog(
-                this.ugcFolderPath
-            );
+    $app.methods.folderSelectorDialog = async function (oldPath) {
+        if (this.folderSelectorDialogVisible) return;
+        if (!oldPath) {
+            oldPath = '';
         }
 
-        D.visible = false;
+        this.folderSelectorDialogVisible = true;
+        var newFolder = '';
+        if (LINUX) {
+            newFolder = await window.electron.openDirectoryDialog();
+        } else {
+            newFolder = await AppApi.OpenFolderSelectorDialog(oldPath);
+        }
 
-        await this.setUGCFolderPath(newUGCFolder);
+        this.folderSelectorDialogVisible = false;
+        return newFolder;
+    };
+
+    $app.methods.openUGCFolderSelector = async function () {
+        var path = await this.folderSelectorDialog(this.ugcFolderPath);
+        await this.setUGCFolderPath(path);
     };
 
     // avatar database provider
@@ -23343,6 +23413,27 @@ console.log(`isLinux: ${LINUX}`);
             }
         }
         return friendsArr[0].ref?.location;
+    };
+
+    // favorites Tab
+    // - local favorites
+    //   - local world & avatar
+    $app.data.localFavoriteShowDelayedContent = [false, false];
+
+    $app.methods.onFavTabClick = function (el) {
+        if (el.index === '0') {
+            this.localFavoriteShowDelayedContent = [false, false];
+        } else {
+            setTimeout(() => {
+                requestAnimationFrame(() => {
+                    if (el.index === '1') {
+                        this.localFavoriteShowDelayedContent = [true, false];
+                    } else if (el.index === '2') {
+                        this.localFavoriteShowDelayedContent = [false, true];
+                    }
+                });
+            }, 300);
+        }
     };
 
     // #endregion
