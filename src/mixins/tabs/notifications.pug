@@ -38,17 +38,10 @@ mixin notificationsTab
                         span {{ scope.row.created_at | formatDate('short') }}
             el-table-column(:label='$t("table.notification.type")' prop='type' width='180')
                 template(#default='scope')
-                    el-tooltip(v-if='scope.row.type === "invite"' placement='top')
-                        template(#content)
-                            location(
-                                v-if='scope.row.details'
-                                :location='scope.row.details.worldId'
-                                :hint='scope.row.details.worldName'
-                                :grouphint='scope.row.details.groupName'
-                                :link='false')
-                        span.x-link(
-                            v-text='$t("view.notification.filters." + scope.row.type)'
-                            @click='showWorldDialog(scope.row.details.worldId)')
+                    span.x-link(
+                        v-if='scope.row.type === "invite"'
+                        v-text='$t("view.notification.filters." + scope.row.type)'
+                        @click='showWorldDialog(scope.row.details.worldId)')
                     el-tooltip(
                         v-else-if='scope.row.type === "group.queueReady" || scope.row.type === "instance.closed"'
                         placement='top')
@@ -87,7 +80,7 @@ mixin notificationsTab
                         el-popover(placement='right' width='500px' trigger='click')
                             img.x-link(
                                 slot='reference'
-                                v-lazy='scope.row.details.imageUrl'
+                                :src='getSmallThumbnailUrl(scope.row.details.imageUrl)'
                                 style='flex: none; height: 50px; border-radius: 4px')
                             img.x-link(
                                 v-lazy='scope.row.details.imageUrl'
@@ -97,7 +90,7 @@ mixin notificationsTab
                         el-popover(placement='right' width='500px' trigger='click')
                             img.x-link(
                                 slot='reference'
-                                v-lazy='scope.row.imageUrl'
+                                :src='getSmallThumbnailUrl(scope.row.imageUrl)'
                                 style='flex: none; height: 50px; border-radius: 4px')
                             img.x-link(
                                 v-lazy='scope.row.imageUrl'
@@ -105,7 +98,7 @@ mixin notificationsTab
                                 @click='showFullscreenImageDialog(scope.row.imageUrl)')
             el-table-column(:label='$t("table.notification.message")' prop='message')
                 template(#default='scope')
-                    span.x-link(v-if='scope.row.type === "invite"')
+                    span.x-link(v-if='scope.row.type === "invite"' style='display: flex')
                         location(
                             v-if='scope.row.details'
                             :location='scope.row.details.worldId'

@@ -375,5 +375,78 @@ export default {
                 .join(', ');
             document.body.style.fontFamily = `${CJKFamily}, ${otherFonts}`;
         }
+    },
+    localeIncludes(str, search, comparer) {
+        // These checks are stolen from https://stackoverflow.com/a/69623589/11030436
+        if (search === '') {
+            return true;
+        } else if (!str || !search) {
+            return false;
+        }
+        const strObj = String(str);
+        const searchObj = String(search);
+
+        if (strObj.length === 0) {
+            return false;
+        }
+
+        if (searchObj.length > strObj.length) {
+            return false;
+        }
+
+        // Now simply loop through each substring and compare them
+        for (let i = 0; i < str.length - searchObj.length + 1; i++) {
+            const substr = strObj.substring(i, i + searchObj.length);
+            if (comparer.compare(substr, searchObj) === 0) {
+                return true;
+            }
+        }
+        return false;
+    },
+    convertFileUrlToImageUrl(url, resolution = 128) {
+        if (!url) {
+            return '';
+        }
+        /**
+         * possible patterns?
+         * /file/file_fileId/version
+         * /file/file_fileId/version/
+         * /file/file_fileId/version/file
+         * /file/file_fileId/version/file/
+         */
+        const pattern = /file\/file_([a-f0-9-]+)\/(\d+)(\/file)?\/?$/;
+        const match = url.match(pattern);
+
+        if (match) {
+            const fileId = match[1];
+            const version = match[2];
+            return `https://api.vrchat.cloud/api/1/image/file_${fileId}/${version}/${resolution}`;
+        }
+        // no match return origin url
+        return url;
+    },
+    replaceVrcPackageUrl(url) {
+        if (!url) {
+            return '';
+        }
+        return url.replace('https://api.vrchat.cloud/', 'https://vrchat.com/');
+    },
+    getLaunchURL(instance) {
+        var L = instance;
+        if (L.instanceId) {
+            if (L.shortName) {
+                return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(
+                    L.worldId
+                )}&instanceId=${encodeURIComponent(
+                    L.instanceId
+                )}&shortName=${encodeURIComponent(L.shortName)}`;
+            }
+            return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(
+                L.worldId
+            )}&instanceId=${encodeURIComponent(L.instanceId)}`;
+        }
+        return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(
+            L.worldId
+        )}`;
     }
 };

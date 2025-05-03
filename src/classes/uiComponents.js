@@ -1,6 +1,8 @@
 import Vue from 'vue';
 import VueMarkdown from 'vue-markdown';
 import { baseClass, $app, API, $t, $utils } from './baseClass.js';
+import { instanceRequest, userRequest } from './request';
+import utils from './utils';
 
 export default class extends baseClass {
     constructor(_app, _API, _t) {
@@ -55,7 +57,26 @@ export default class extends baseClass {
                         : 'none';
                 },
                 confirm() {
-                    $app.selfInvite(this.location, this.shortname);
+                    this.selfInvite(this.location, this.shortname);
+                },
+                selfInvite(location, shortName) {
+                    const L = utils.parseLocation(location);
+                    if (!L.isRealInstance) {
+                        return;
+                    }
+                    instanceRequest
+                        .selfInvite({
+                            instanceId: L.instanceId,
+                            worldId: L.worldId,
+                            shortName
+                        })
+                        .then((args) => {
+                            this.$message({
+                                message: 'Self invite sent',
+                                type: 'success'
+                            });
+                            return args;
+                        });
                 }
             },
             watch: {
@@ -204,11 +225,12 @@ export default class extends baseClass {
                 '<el-tooltip v-if="isValidInstance" placement="bottom">' +
                 '<div slot="content">' +
                 '<template v-if="isClosed"><span>Closed At: {{ closedAt | formatDate(\'long\') }}</span></br></template>' +
-                '<template v-if="canCloseInstance"><el-button :disabled="isClosed" size="mini" type="primary" @click="$app.closeInstance(location)">{{ $t("dialog.user.info.close_instance") }}</el-button></br></br></template>' +
+                '<template v-if="canCloseInstance"><el-button :disabled="isClosed" size="mini" type="primary" @click="$root.closeInstance(location)">{{ $t("dialog.user.info.close_instance") }}</el-button></br></br></template>' +
                 '<span><span style="color:#409eff">PC: </span>{{ platforms.standalonewindows }}</span></br>' +
                 '<span><span style="color:#67c23a">Android: </span>{{ platforms.android }}</span></br>' +
                 '<span>{{ $t("dialog.user.info.instance_game_version") }} {{ gameServerVersion }}</span></br>' +
                 '<span v-if="queueEnabled">{{ $t("dialog.user.info.instance_queuing_enabled") }}</br></span>' +
+                '<span v-if="disabledContentSettings">{{ $t("dialog.user.info.instance_disabled_content") }} {{ disabledContentSettings }}</br></span>' +
                 '<span v-if="userList.length">{{ $t("dialog.user.info.instance_users") }}</br></span>' +
                 '<template v-for="user in userList"><span style="cursor:pointer;margin-right:5px" @click="showUserDialog(user.id)" v-text="user.displayName"></span></template>' +
                 '</div>' +
@@ -261,6 +283,7 @@ export default class extends baseClass {
                     this.gameServerVersion = '';
                     this.canCloseInstance = false;
                     this.isAgeGated = false;
+                    this.disabledContentSettings = '';
                     if (
                         !this.location ||
                         !this.instance ||
@@ -306,6 +329,13 @@ export default class extends baseClass {
                     if (this.location && this.location.includes('~ageGate')) {
                         // dumb workaround for API not returning `ageGate`
                         this.isAgeGated = true;
+                    }
+                    if (
+                        this.instance.$disabledContentSettings &&
+                        this.instance.$disabledContentSettings.length
+                    ) {
+                        this.disabledContentSettings =
+                            this.instance.$disabledContentSettings.join(', ');
                     }
                 },
                 showUserDialog(userId) {
@@ -446,7 +476,7 @@ export default class extends baseClass {
                     if (this.hint) {
                         this.username = this.hint;
                     } else if (this.userid) {
-                        var args = await API.getCachedUser({
+                        var args = await userRequest.getCachedUser({
                             userId: this.userid
                         });
                     }

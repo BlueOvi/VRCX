@@ -1,5 +1,5 @@
 <template>
-    <div id="aside" class="x-aside-container">
+    <div id="aside" class="x-aside-container" v-show="isSideBarTabShow">
         <div style="display: flex; align-items: baseline">
             <el-select
                 value=""
@@ -95,6 +95,7 @@
                 <groups-sidebar
                     :group-instances="groupInstances"
                     :group-order="inGameGroupOrder"
+                    :is-age-gated-instances-visible="isAgeGatedInstancesVisible"
                     @show-group-dialog="$emit('show-group-dialog', $event)"></groups-sidebar>
             </el-tab-pane>
         </el-tabs>
@@ -108,12 +109,12 @@
 
     export default {
         name: 'SideBar',
-        inject: ['API', 'userImage'],
         components: {
             FriendsSidebar,
             GroupsSidebar,
             Location
         },
+        inject: ['API', 'userImage'],
         props: {
             // settings
             // remove these props when have a state manager.
@@ -124,6 +125,9 @@
             gameLogDisabled: Boolean,
             hideNicknames: Boolean,
             isHideFriendsInSameInstance: Boolean,
+            isAgeGatedInstancesVisible: Boolean,
+
+            isSideBarTabShow: Boolean,
 
             quickSearchRemoteMethod: Function,
             quickSearchItems: Array,
@@ -146,7 +150,3 @@
         }
     };
 </script>
-
-<style scoped>
-    /* your component styles here */
-</style>

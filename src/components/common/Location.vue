@@ -4,7 +4,7 @@
         <span v-show="text">
             <span
                 :class="{ 'x-link': link && location !== 'private' && location !== 'offline' }"
-                @click="showWorldDialog">
+                @click="handleShowWorldDialog">
                 <i v-if="isTraveling" class="el-icon el-icon-loading" style="display: inline-block"></i>
                 <span>{{ text }}</span>
             </span>
@@ -21,7 +21,14 @@
     export default {
         // eslint-disable-next-line vue/multi-word-component-names
         name: 'Location',
-        inject: ['API'],
+        inject: {
+            // prevent randomly error
+            // not good idea, it's temporary
+            API: { default: window.API },
+            getWorldName: { default: window.$app?.getWorldName },
+            getGroupName: { default: window.$app?.getGroupName },
+            showWorldDialog: { default: window.$app?.showWorldDialog }
+        },
         props: {
             location: String,
             traveling: String,
@@ -82,8 +89,7 @@
                 } else if (L.worldId) {
                     var ref = this.API.cachedWorlds.get(L.worldId);
                     if (typeof ref === 'undefined') {
-                        // TODO: USE props
-                        $app.getWorldName(L.worldId).then((worldName) => {
+                        this.getWorldName(L.worldId).then((worldName) => {
                             if (L.tag === instanceId) {
                                 if (L.instanceId) {
                                     this.text = `${worldName} #${L.instanceName} ${L.accessTypeName}`;
@@ -102,8 +108,7 @@
                     this.groupName = this.grouphint;
                 } else if (L.groupId) {
                     this.groupName = L.groupId;
-                    // TODO: USE props
-                    $app.getGroupName(instanceId).then((groupName) => {
+                    this.getGroupName(instanceId).then((groupName) => {
                         if (L.tag === instanceId) {
                             this.groupName = groupName;
                         }
@@ -118,7 +123,7 @@
                 }
                 this.strict = L.strict;
             },
-            showWorldDialog() {
+            handleShowWorldDialog() {
                 if (this.link) {
                     let instanceId = this.location;
                     if (this.traveling && this.location === 'traveling') {
@@ -132,7 +137,7 @@
                     if (this.isOpenPreviousInstanceInfoDialog) {
                         this.$emit('open-previous-instance-info-dialog', instanceId);
                     } else {
-                        this.API.$emit('SHOW_WORLD_DIALOG', instanceId);
+                        this.showWorldDialog(instanceId);
                     }
                 }
             },
@@ -153,5 +158,3 @@
         }
     };
 </script>
-
-<style scoped></style>

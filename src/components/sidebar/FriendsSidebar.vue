@@ -40,7 +40,7 @@
             </div>
         </div>
         <div
-            v-show="vipFriendsByGroupStatus.length"
+            v-show="vipFriendsDisplayNumber"
             class="x-friend-group x-link"
             @click="
                 isVIPFriends = !isVIPFriends;
@@ -48,7 +48,8 @@
             ">
             <i class="el-icon-arrow-right" :class="{ rotate: isVIPFriends }"></i>
             <span style="margin-left: 5px">
-                {{ $t('side_panel.favorite') }} &horbar; {{ vipFriendsByGroupStatus.length }}
+                {{ $t('side_panel.favorite') }} &horbar;
+                {{ vipFriendsDisplayNumber }}
             </span>
         </div>
         <div v-show="isVIPFriends">
@@ -292,7 +293,7 @@
                 const result = [];
 
                 for (const key in vipFriendsByGroup) {
-                    if (Object.prototype.hasOwnProperty.call(vipFriendsByGroup, key)) {
+                    if (Object.hasOwn(vipFriendsByGroup, key)) {
                         const groupFriends = vipFriendsByGroup[key];
                         // sort groupFriends using the order of vipFriends
                         // avoid unnecessary sorting
@@ -309,12 +310,15 @@
                 }
 
                 return result.sort((a, b) => a[0].key.localeCompare(b[0].key));
+            },
+            vipFriendsDisplayNumber() {
+                return this.isSidebarDivideByFriendGroup
+                    ? this.vipFriendsDivideByGroup.length
+                    : this.vipFriendsByGroupStatus.length;
             }
         },
         created() {
-            configRepository.getBool('VRCX_sidebarGroupByInstanceCollapsed', false).then((value) => {
-                this.isSidebarGroupByInstanceCollapsed = value;
-            });
+            this.loadFriendsGroupStates();
         },
         methods: {
             saveFriendsGroupStates() {
@@ -330,6 +334,10 @@
                 this.isOnlineFriends = await configRepository.getBool('VRCX_isFriendsGroupOnline', true);
                 this.isActiveFriends = await configRepository.getBool('VRCX_isFriendsGroupActive', false);
                 this.isOfflineFriends = await configRepository.getBool('VRCX_isFriendsGroupOffline', false);
+                this.isSidebarGroupByInstanceCollapsed = await configRepository.getBool(
+                    'VRCX_sidebarGroupByInstanceCollapsed',
+                    false
+                );
             },
             isRealInstance(locationTag) {
                 return utils.isRealInstance(locationTag);
