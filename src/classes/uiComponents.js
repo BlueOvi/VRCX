@@ -1,8 +1,9 @@
 import Vue from 'vue';
 import VueMarkdown from 'vue-markdown';
-import { baseClass, $app, API, $t, $utils } from './baseClass.js';
-import { instanceRequest, userRequest } from './request';
-import utils from './utils';
+import { instanceRequest, userRequest } from '../api';
+import { hasGroupPermission } from '../composables/group/utils';
+import { parseLocation } from '../composables/instance/utils';
+import { $app, $t, API, baseClass } from './baseClass.js';
 
 export default class extends baseClass {
     constructor(_app, _API, _t) {
@@ -60,7 +61,7 @@ export default class extends baseClass {
                     this.selfInvite(this.location, this.shortname);
                 },
                 selfInvite(location, shortName) {
-                    const L = utils.parseLocation(location);
+                    const L = parseLocation(location);
                     if (!L.isRealInstance) {
                         return;
                     }
@@ -165,11 +166,11 @@ export default class extends baseClass {
                     if (!this.location) {
                         return;
                     }
-                    var L = $utils.parseLocation(this.location);
+                    var L = parseLocation(this.location);
                     if (!L.groupId) {
                         return;
                     }
-                    API.$emit('SHOW_GROUP_DIALOG', L.groupId);
+                    $app.showGroupDialog(L.groupId);
                 }
             },
             watch: {
@@ -320,7 +321,7 @@ export default class extends baseClass {
                         // check group perms
                         var groupId = this.instance.ownerId;
                         var group = API.cachedGroups.get(groupId);
-                        this.canCloseInstance = $app.hasGroupPermission(
+                        this.canCloseInstance = hasGroupPermission(
                             group,
                             'group-instance-moderate'
                         );
@@ -339,7 +340,7 @@ export default class extends baseClass {
                     }
                 },
                 showUserDialog(userId) {
-                    API.$emit('SHOW_USER_DIALOG', userId);
+                    this.showUserDialog(userId);
                 }
             },
             watch: {

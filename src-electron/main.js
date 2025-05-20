@@ -29,6 +29,8 @@ let appImagePath = process.env.APPIMAGE;
 const args = process.argv.slice(1);
 const noInstall = args.includes('--no-install');
 const x11 = args.includes('--x11');
+const noDesktop = args.includes('--no-desktop');
+
 const homePath = getHomePath();
 tryRelaunchWithArgs(args);
 tryCopyFromWinePrefix();
@@ -381,6 +383,11 @@ async function installVRCX() {
 }
 
 async function createDesktopFile() {
+    if (noDesktop) {
+        console.log('Skipping desktop file creation.');
+        return;
+    }
+
     // Download the icon and save it to the target directory
     const iconPath = path.join(homePath, '.local/share/icons/VRCX.png');
     if (!fs.existsSync(iconPath)) {
@@ -401,6 +408,7 @@ async function createDesktopFile() {
         homePath,
         '.local/share/applications/VRCX.desktop'
     );
+
     const dotDesktop = {
         Name: 'VRCX',
         Version: version,

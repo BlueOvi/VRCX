@@ -1,6 +1,8 @@
 import * as workerTimers from 'worker-timers';
 import Noty from 'noty';
-import { baseClass, $app, API, $t, $utils } from './baseClass.js';
+import { parseLocation } from '../composables/instance/utils';
+import { baseClass, $app, API, $utils } from './baseClass.js';
+import { groupRequest } from '../api';
 
 export default class extends baseClass {
     constructor(_app, _API, _t) {
@@ -264,8 +266,8 @@ export default class extends baseClass {
                 case 'friend-online':
                     // Where is instanceId, travelingToWorld, travelingToInstance?
                     // More JANK, what a mess
-                    var $location = $utils.parseLocation(content.location);
-                    var $travelingToLocation = $utils.parseLocation(
+                    var $location = parseLocation(content.location);
+                    var $travelingToLocation = parseLocation(
                         content.travelingToLocation
                     );
                     if (content?.user?.id) {
@@ -366,8 +368,8 @@ export default class extends baseClass {
                     break;
 
                 case 'friend-location':
-                    var $location = $utils.parseLocation(content.location);
-                    var $travelingToLocation = $utils.parseLocation(
+                    var $location = parseLocation(content.location);
+                    var $travelingToLocation = parseLocation(
                         content.travelingToLocation
                     );
                     if (!content?.user?.id) {
@@ -450,7 +452,7 @@ export default class extends baseClass {
 
                 case 'group-role-updated':
                     var groupId = content.role.groupId;
-                    API.getGroup({ groupId, includeRoles: true });
+                    groupRequest.getGroup({ groupId, includeRoles: true });
                     console.log('group-role-updated', content);
 
                     // content {

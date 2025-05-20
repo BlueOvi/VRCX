@@ -1,6 +1,6 @@
 import { baseClass, $app, API, $t, $utils } from './baseClass.js';
-import configRepository from '../repository/config.js';
-import database from '../repository/database.js';
+import configRepository from '../service/config.js';
+import database from '../service/database.js';
 
 export default class extends baseClass {
     constructor(_app, _API, _t) {
@@ -26,7 +26,7 @@ export default class extends baseClass {
             paginationProps: {
                 small: true,
                 layout: 'sizes,prev,pager,next,total',
-                pageSizes: [10, 15, 25, 50, 100]
+                pageSizes: [10, 15, 20, 25, 50, 100]
             }
         },
 

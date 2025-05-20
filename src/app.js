@@ -14,6 +14,7 @@ import Noty from 'noty';
 import Vue from 'vue';
 import VueLazyload from 'vue-lazyload';
 import VueI18n from 'vue-i18n';
+import { createI18n } from 'vue-i18n-bridge';
 import { DataTables } from 'vue-data-tables';
 import ElementUI from 'element-ui';
 import dayjs from 'dayjs';
@@ -25,12 +26,12 @@ import * as workerTimers from 'worker-timers';
 import 'default-passive-events';
 
 // util classes
-import configRepository from './repository/config.js';
+import configRepository from './service/config.js';
 import webApiService from './service/webapi.js';
-import security from './security.js';
-import database from './repository/database.js';
+import security from './service/security.js';
+import database from './service/database.js';
 import * as localizedStrings from './localization/localizedStrings.js';
-import removeConfusables, { removeWhitespace } from './confusables.js';
+import removeConfusables, { removeWhitespace } from './service/confusables.js';
 import $utils from './classes/utils.js';
 import _apiInit from './classes/apiInit.js';
 import _apiRequestHandler from './classes/apiRequestHandler.js';
@@ -49,32 +50,89 @@ import {
     inviteMessagesRequest,
     miscRequest,
     imageRequest,
-    vrcPlusImageRequest
-} from './classes/request';
+    vrcPlusImageRequest,
+    groupRequest
+} from './api';
+import { userDialogGroupSortingOptions } from './composables/user/constants/userDialogGroupSortingOptions';
+import {
+    getPrintFileName,
+    getPrintLocalDate,
+    languageClass
+} from './composables/user/utils';
+import {
+    compareUnityVersion,
+    getPlatformInfo,
+    storeAvatarImage
+} from './composables/avatar/utils';
+
+import { displayLocation } from './composables/instance/utils';
+
+import LoginPage from './views/Login/Login.vue';
 
 // tabs
-import ModerationTab from './views/tabs/Moderation.vue';
-import ChartsTab from './views/tabs/Charts.vue';
-import SideBar from './views/SideBar.vue';
-import NavMenu from './views/NavMenu.vue';
-import FriendsListTab from './views/tabs/FriendsList.vue';
-import FavoritesTab from './views/tabs/Favorites.vue';
+import ModerationTab from './views/Moderation/Moderation.vue';
+import ChartsTab from './views/Charts/Charts.vue';
+import SideBar from './views/SideBar/SideBar.vue';
+import NavMenu from './components/NavMenu.vue';
+import FriendListTab from './views/FriendList/FriendList.vue';
+import FavoritesTab from './views/Favorites/Favorites.vue';
+import FriendLogTab from './views/FriendLog/FriendLog.vue';
+import GameLogTab from './views/GameLog/GameLog.vue';
+import NotificationTab from './views/Notifications/Notification.vue';
+import FeedTab from './views/Feed/Feed.vue';
+import SearchTab from './views/Search/Search.vue';
+import ProfileTab from './views/Profile/Profile.vue';
+import PlayerListTab from './views/PlayerList/PlayerList.vue';
 
 // components
-import SimpleSwitch from './components/settings/SimpleSwitch.vue';
-import Location from './components/common/Location.vue';
+import SimpleSwitch from './components/SimpleSwitch.vue';
+import Location from './components/Location.vue';
 
 // dialogs
-import WorldDialog from './views/dialogs/world/WorldDialog.vue';
-import PreviousInstancesInfoDialog from './views/dialogs/previousInstances/PreviousInstancesInfoDialog.vue';
-import FriendImportDialog from './views/dialogs/favorites/FriendImportDialog.vue';
-import WorldImportDialog from './views/dialogs/favorites/WorldImportDialog.vue';
-import AvatarImportDialog from './views/dialogs/favorites/AvatarImportDialog.vue';
-import LaunchDialog from './views/dialogs/launch/LaunchDialog.vue';
-import PreviousInstancesUserDialog from './views/dialogs/previousInstances/PreviousInstancesUserDialog.vue';
-import FavoriteDialog from './views/dialogs/favoritesDialog/FavoriteDialog.vue';
-import ExportFriendsListDialog from './views/dialogs/favoritesDialog/ExportFriendsListDialog.vue';
-import ExportAvatarsListDialog from './views/dialogs/favoritesDialog/ExportAvatarsListDialog.vue';
+import WorldDialog from './components/dialogs/WorldDialog/WorldDialog.vue';
+import PreviousInstancesInfoDialog from './components/dialogs/PreviousInstancesDialog/PreviousInstancesInfoDialog.vue';
+import FriendImportDialog from './views/Favorites/dialogs/FriendImportDialog.vue';
+import WorldImportDialog from './views/Favorites/dialogs/WorldImportDialog.vue';
+import AvatarImportDialog from './views/Favorites/dialogs/AvatarImportDialog.vue';
+import LaunchDialog from './components/dialogs/LaunchDialog.vue';
+import ChooseFavoriteGroupDialog from './components/dialogs/ChooseFavoriteGroupDialog.vue';
+import ExportFriendsListDialog from './views/Profile/dialogs/ExportFriendsListDialog.vue';
+import ExportAvatarsListDialog from './views/Profile/dialogs/ExportAvatarsListDialog.vue';
+import UserDialog from './components/dialogs/UserDialog/UserDialog.vue';
+import GroupDialog from './components/dialogs/GroupDialog/GroupDialog.vue';
+import InviteGroupDialog from './components/dialogs/InviteGroupDialog.vue';
+import AvatarDialog from './components/dialogs/AvatarDialog/AvatarDialog.vue';
+import FeedFiltersDialog from './views/Settings/dialogs/FeedFiltersDialog.vue';
+import LaunchOptionsDialog from './views/Settings/dialogs/LaunchOptionsDialog.vue';
+import OpenSourceSoftwareNoticeDialog from './views/Settings/dialogs/OpenSourceSoftwareNoticeDialog.vue';
+import ChangelogDialog from './views/Settings/dialogs/ChangelogDialog.vue';
+import VRCXUpdateDialog from './components/dialogs/VRCXUpdateDialog.vue';
+import ScreenshotMetadataDialog from './views/Settings/dialogs/ScreenshotMetadataDialog.vue';
+import DiscordNamesDialog from './views/Profile/dialogs/DiscordNamesDialog.vue';
+import EditInviteMessageDialog from './views/Profile/dialogs/EditInviteMessageDialog.vue';
+import NoteExportDialog from './views/Settings/dialogs/NoteExportDialog.vue';
+import VRChatConfigDialog from './views/Settings/dialogs/VRChatConfigDialog.vue';
+import YouTubeApiDialog from './views/Settings/dialogs/YouTubeApiDialog.vue';
+import NotificationPositionDialog from './views/Settings/dialogs/NotificationPositionDialog.vue';
+import AvatarProviderDialog from './views/Settings/dialogs/AvatarProviderDialog.vue';
+import RegistryBackupDialog from './views/Settings/dialogs/RegistryBackupDialog.vue';
+import PrimaryPasswordDialog from './views/Settings/dialogs/PrimaryPasswordDialog.vue';
+import ChatboxBlacklistDialog from './views/PlayerList/dialogs/ChatboxBlacklistDialog.vue';
+import FullscreenImageDialog from './components/dialogs/FullscreenImageDialog.vue';
+
+import SafeDialog from './components/dialogs/SafeDialog.vue';
+
+import { hasGroupPermission } from './composables/group/utils';
+import { isRealInstance, parseLocation } from './composables/instance/utils';
+import {
+    checkVRChatCache,
+    convertFileUrlToImageUrl,
+    deleteVRChatCache,
+    extractFileId,
+    extractFileVersion,
+    getAvailablePlatforms,
+    _utils
+} from './composables/shared/utils';
 
 // main app classes
 import _sharedFeed from './classes/sharedFeed.js';
@@ -86,7 +144,6 @@ import _apiLogin from './classes/apiLogin.js';
 import _currentUser from './classes/currentUser.js';
 import _updateLoop from './classes/updateLoop.js';
 import _discordRpc from './classes/discordRpc.js';
-import _booping from './classes/booping.js';
 import _vrcxUpdater from './classes/vrcxUpdater.js';
 import _gameLog from './classes/gameLog.js';
 import _gameRealtimeLogging from './classes/gameRealtimeLogging.js';
@@ -136,16 +193,24 @@ console.log(`isLinux: ${LINUX}`);
     }
 
     // #region | localization
-    Vue.use(VueI18n);
-    const i18n = new VueI18n({
-        locale: 'en',
-        fallbackLocale: 'en',
-        messages: localizedStrings,
-        silentTranslationWarn: true
-    });
-    const $t = i18n.t.bind(i18n);
+    Vue.use(VueI18n, { bridge: true });
+    const i18n = createI18n(
+        {
+            locale: 'en',
+            fallbackLocale: 'en',
+            messages: localizedStrings,
+            legacy: false,
+            globalInjection: true,
+            missingWarn: false,
+            warnHtmlMessage: false,
+            fallbackWarn: false
+        },
+        VueI18n
+    );
+    const $t = i18n.global.t;
+    Vue.use(i18n);
     Vue.use(ElementUI, {
-        i18n: (key, value) => i18n.t(key, value)
+        i18n: (key, value) => i18n.global.t(key, value)
     });
     // #endregion
 
@@ -168,7 +233,6 @@ console.log(`isLinux: ${LINUX}`);
         currentUser: new _currentUser($app, API, $t),
         updateLoop: new _updateLoop($app, API, $t),
         discordRpc: new _discordRpc($app, API, $t),
-        booping: new _booping($app, API, $t),
         vrcxUpdater: new _vrcxUpdater($app, API, $t),
         gameLog: new _gameLog($app, API, $t),
         gameRealtimeLogging: new _gameRealtimeLogging($app, API, $t),
@@ -203,14 +267,22 @@ console.log(`isLinux: ${LINUX}`);
         },
         watch: {},
         components: {
+            LoginPage,
             // tabs
             ModerationTab,
             ChartsTab,
-            FriendsListTab,
+            FriendListTab,
             FavoritesTab,
+            NotificationTab,
+            SearchTab,
             // - others
             SideBar,
             NavMenu,
+            FriendLogTab,
+            GameLogTab,
+            FeedTab,
+            ProfileTab,
+            PlayerListTab,
 
             // components
             // - common
@@ -222,19 +294,44 @@ console.log(`isLinux: ${LINUX}`);
             // - dialogs
             //  - previous instances
             PreviousInstancesInfoDialog,
-            PreviousInstancesUserDialog,
+            UserDialog,
             //  - world
             WorldDialog,
+            //  - group
+            GroupDialog,
+            InviteGroupDialog,
+            //  - avatar
+            AvatarDialog,
             //  - favorites
             FriendImportDialog,
             WorldImportDialog,
             AvatarImportDialog,
             //  - favorites dialog
-            FavoriteDialog,
+            ChooseFavoriteGroupDialog,
             ExportFriendsListDialog,
             ExportAvatarsListDialog,
             //  - launch
-            LaunchDialog
+            LaunchDialog,
+            //  - player list
+            ChatboxBlacklistDialog,
+            //  - profile
+            DiscordNamesDialog,
+            //  - settings
+            FeedFiltersDialog,
+            LaunchOptionsDialog,
+            OpenSourceSoftwareNoticeDialog,
+            ChangelogDialog,
+            VRCXUpdateDialog,
+            ScreenshotMetadataDialog,
+            EditInviteMessageDialog,
+            NoteExportDialog,
+            VRChatConfigDialog,
+            YouTubeApiDialog,
+            NotificationPositionDialog,
+            AvatarProviderDialog,
+            RegistryBackupDialog,
+            PrimaryPasswordDialog,
+            FullscreenImageDialog
         },
         provide() {
             return {
@@ -248,19 +345,18 @@ console.log(`isLinux: ${LINUX}`);
                 userImageFull: this.userImageFull,
                 showFullscreenImageDialog: this.showFullscreenImageDialog,
                 statusClass: this.statusClass,
-                getFaviconUrl: this.getFaviconUrl,
                 openExternalLink: this.openExternalLink,
-                beforeDialogClose: this.beforeDialogClose,
-                dialogMouseDown: this.dialogMouseDown,
-                dialogMouseUp: this.dialogMouseUp,
                 showWorldDialog: this.showWorldDialog,
                 showAvatarDialog: this.showAvatarDialog,
                 showPreviousInstancesInfoDialog:
                     this.showPreviousInstancesInfoDialog,
-                showInviteDialog: this.showInviteDialog,
                 showLaunchDialog: this.showLaunchDialog,
                 showFavoriteDialog: this.showFavoriteDialog,
-                displayPreviousImages: this.displayPreviousImages
+                displayPreviousImages: this.displayPreviousImages,
+                languageClass: this.languageClass,
+                showGroupDialog: this.showGroupDialog,
+                showGallerySelectDialog: this.showGallerySelectDialog,
+                showGalleryDialog: this.showGalleryDialog
             };
         },
         el: '#root',
@@ -275,6 +371,7 @@ console.log(`isLinux: ${LINUX}`);
                 console.error(err);
             }
             await AppApi.SetUserAgent();
+            await this.loadVrcxId();
             this.appVersion = await AppApi.GetVersion();
             await this.compareAppVersion();
             await this.setBranch();
@@ -287,14 +384,8 @@ console.log(`isLinux: ${LINUX}`);
                 this.enableAppLauncher,
                 this.enableAppLauncherAutoClose
             );
-            API.$on('SHOW_USER_DIALOG', (userId) =>
-                this.showUserDialog(userId)
-            );
             API.$on('SHOW_WORLD_DIALOG_SHORTNAME', (tag) =>
                 this.verifyShortName('', tag)
-            );
-            API.$on('SHOW_GROUP_DIALOG', (groupId) =>
-                this.showGroupDialog(groupId)
             );
             this.updateLoop();
             this.getGameLogTable();
@@ -359,6 +450,7 @@ console.log(`isLinux: ${LINUX}`);
         app.methods = { ...app.methods, ...value._methods };
         app.data = { ...app.data, ...value._data };
     }
+    app.methods = { ...app.methods, ..._utils };
     Object.assign($app, app);
 
     // #endregion
@@ -384,14 +476,6 @@ console.log(`isLinux: ${LINUX}`);
             }
         } else if (e.altKey && e.key === 'R') {
             $app.refreshCustomCss();
-        }
-
-        let carouselNavigation = { ArrowLeft: 0, ArrowRight: 2 }[e.key];
-        if (
-            typeof carouselNavigation !== 'undefined' &&
-            $app.screenshotMetadataDialog?.visible
-        ) {
-            $app.screenshotMetadataCarouselChange(carouselNavigation);
         }
 
         if (!e.shiftKey) {
@@ -433,6 +517,8 @@ console.log(`isLinux: ${LINUX}`);
     });
 
     Vue.use(DataTables);
+
+    Vue.component('safe-dialog', SafeDialog);
 
     dayjs.extend(duration);
     dayjs.extend(utc);
@@ -490,6 +576,10 @@ console.log(`isLinux: ${LINUX}`);
 
     API.$on('USER:LIST', function (args) {
         for (var json of args.json) {
+            if (!json.displayName) {
+                console.error('getUsers gave us garbage', json);
+                continue;
+            }
             this.$emit('USER', {
                 json,
                 params: {
@@ -582,12 +672,12 @@ console.log(`isLinux: ${LINUX}`);
 
     API.applyPresenceLocation = function (ref) {
         var presence = ref.presence;
-        if ($utils.isRealInstance(presence.world)) {
+        if (isRealInstance(presence.world)) {
             ref.$locationTag = `${presence.world}:${presence.instance}`;
         } else {
             ref.$locationTag = presence.world;
         }
-        if ($utils.isRealInstance(presence.travelingToWorld)) {
+        if (isRealInstance(presence.travelingToWorld)) {
             ref.$travelingToLocation = `${presence.travelingToWorld}:${presence.travelingToInstance}`;
         } else {
             ref.$travelingToLocation = presence.travelingToWorld;
@@ -626,16 +716,16 @@ console.log(`isLinux: ${LINUX}`);
     API.applyUser = function (json) {
         var ref = this.cachedUsers.get(json.id);
         if (typeof json.statusDescription !== 'undefined') {
-            json.statusDescription = $app.replaceBioSymbols(
+            json.statusDescription = $utils.replaceBioSymbols(
                 json.statusDescription
             );
             json.statusDescription = $app.removeEmojis(json.statusDescription);
         }
         if (typeof json.bio !== 'undefined') {
-            json.bio = $app.replaceBioSymbols(json.bio);
+            json.bio = $utils.replaceBioSymbols(json.bio);
         }
         if (typeof json.note !== 'undefined') {
-            json.note = $app.replaceBioSymbols(json.note);
+            json.note = $utils.replaceBioSymbols(json.note);
         }
         if (json.currentAvatarImageUrl === $app.robotUrl) {
             delete json.currentAvatarImageUrl;
@@ -715,7 +805,7 @@ console.log(`isLinux: ${LINUX}`);
                 ref.$online_for = player.joinTime;
             }
             if (ref.location === 'traveling') {
-                ref.$location = $utils.parseLocation(ref.travelingToLocation);
+                ref.$location = parseLocation(ref.travelingToLocation);
                 if (
                     !this.currentTravelers.has(ref.id) &&
                     ref.travelingToLocation
@@ -730,7 +820,7 @@ console.log(`isLinux: ${LINUX}`);
                     $app.onPlayerTraveling(travelRef);
                 }
             } else {
-                ref.$location = $utils.parseLocation(ref.location);
+                ref.$location = parseLocation(ref.location);
                 if (this.currentTravelers.has(ref.id)) {
                     this.currentTravelers.delete(ref.id);
                     $app.sharedFeed.pendingUpdate = true;
@@ -772,7 +862,7 @@ console.log(`isLinux: ${LINUX}`);
             this.applyUserLanguage(ref);
             // traveling
             if (ref.location === 'traveling') {
-                ref.$location = $utils.parseLocation(ref.travelingToLocation);
+                ref.$location = parseLocation(ref.travelingToLocation);
                 if (!this.currentTravelers.has(ref.id)) {
                     var travelRef = {
                         created_at: new Date().toJSON(),
@@ -784,7 +874,7 @@ console.log(`isLinux: ${LINUX}`);
                     $app.onPlayerTraveling(travelRef);
                 }
             } else {
-                ref.$location = $utils.parseLocation(ref.location);
+                ref.$location = parseLocation(ref.location);
                 if (this.currentTravelers.has(ref.id)) {
                     this.currentTravelers.delete(ref.id);
                     $app.sharedFeed.pendingUpdate = true;
@@ -935,7 +1025,7 @@ console.log(`isLinux: ${LINUX}`);
         // If the user happens to be offline or the api is just being dumb, we assume that the user logged into VRCX is different than the one in-game and return the gameLog location.
         // This is really dumb.
         if (presenceLocation === gameLogLocation) {
-            const L = $utils.parseLocation(presenceLocation);
+            const L = parseLocation(presenceLocation);
             return L.worldId;
         }
 
@@ -950,15 +1040,15 @@ console.log(`isLinux: ${LINUX}`);
             userLocation
         );
 
-        if ($utils.isRealInstance(userLocation)) {
+        if (isRealInstance(userLocation)) {
             console.warn('PWI: returning user location', userLocation);
-            const L = $utils.parseLocation(userLocation);
+            const L = parseLocation(userLocation);
             return L.worldId;
         }
 
-        if ($utils.isRealInstance(gameLogLocation)) {
+        if (isRealInstance(gameLogLocation)) {
             console.warn(`PWI: returning gamelog location: `, gameLogLocation);
-            const L = $utils.parseLocation(gameLogLocation);
+            const L = parseLocation(gameLogLocation);
             return L.worldId;
         }
 
@@ -1019,8 +1109,8 @@ console.log(`isLinux: ${LINUX}`);
             Object.assign(ref, json);
         }
         ref.$isLabs = ref.tags.includes('system_labs');
-        ref.name = $app.replaceBioSymbols(ref.name);
-        ref.description = $app.replaceBioSymbols(ref.description);
+        ref.name = $utils.replaceBioSymbols(ref.name);
+        ref.description = $utils.replaceBioSymbols(ref.description);
         return ref;
     };
 
@@ -1083,7 +1173,7 @@ console.log(`isLinux: ${LINUX}`);
         } else {
             Object.assign(ref, json);
         }
-        ref.$location = $utils.parseLocation(ref.location);
+        ref.$location = parseLocation(ref.location);
         if (json.world?.id) {
             worldRequest
                 .getCachedWorld({
@@ -1379,19 +1469,19 @@ console.log(`isLinux: ${LINUX}`);
                 ref.unityPackages = unityPackages;
             }
         }
-        ref.name = $app.replaceBioSymbols(ref.name);
-        ref.description = $app.replaceBioSymbols(ref.description);
+        ref.name = $utils.replaceBioSymbols(ref.name);
+        ref.description = $utils.replaceBioSymbols(ref.description);
         return ref;
     };
 
-    API.$on('AVATAR:IMPOSTER:DELETE', function (args) {
-        if (
-            $app.avatarDialog.visible &&
-            args.params.avatarId === $app.avatarDialog.id
-        ) {
-            $app.showAvatarDialog($app.avatarDialog.id);
-        }
-    });
+    // API.$on('AVATAR:IMPOSTER:DELETE', function (args) {
+    //     if (
+    //         $app.avatarDialog.visible &&
+    //         args.params.avatarId === $app.avatarDialog.id
+    //     ) {
+    //         $app.showAvatarDialog($app.avatarDialog.id);
+    //     }
+    // });
 
     // #endregion
     // #region | API: Notification
@@ -1638,21 +1728,6 @@ console.log(`isLinux: ${LINUX}`);
         } else if (json.title) {
             json.message = json.title;
         }
-        if (json.type === 'boop') {
-            if (!json.imageUrl && json.details?.emojiId?.startsWith('file_')) {
-                // JANK: create image url from fileId
-                json.imageUrl = `https://api.vrchat.cloud/api/1/file/${json.details.emojiId}/${json.details.emojiVersion}`;
-            }
-
-            if (!json.details?.emojiId) {
-                json.message = `${json.senderUsername} Booped you! without an emoji`;
-            } else if (!json.details.emojiId.startsWith('file_')) {
-                // JANK: get emoji name from emojiId
-                json.message = `${json.senderUsername} Booped you! with ${$app.getEmojiName(json.details.emojiId)}`;
-            } else {
-                json.message = `${json.senderUsername} Booped you! with custom emoji`;
-            }
-        }
         this.$emit('NOTIFICATION', {
             json,
             params: {
@@ -1827,7 +1902,13 @@ console.log(`isLinux: ${LINUX}`);
             .finally(() => {
                 this.isPlayerModerationsLoading = false;
             })
-            .then(() => {
+            .then((res) => {
+                // 'AVATAR-MODERATION:LIST';
+                // TODO: compare with cachedAvatarModerations
+                this.cachedAvatarModerations = new Map();
+                for (var json of res[1]?.json) {
+                    this.applyAvatarModeration(json);
+                }
                 this.deleteExpiredPlayerModerations();
             });
     };
@@ -1836,32 +1917,6 @@ console.log(`isLinux: ${LINUX}`);
     // #region | API: AvatarModeration
 
     API.cachedAvatarModerations = new Map();
-
-    API.$on('AVATAR-MODERATION', function (args) {
-        args.ref = this.applyAvatarModeration(args.json);
-    });
-
-    API.$on('AVATAR-MODERATION:LIST', function (args) {
-        // TODO: compare with cachedAvatarModerations
-        this.cachedAvatarModerations = new Map();
-        for (var json of args.json) {
-            this.applyAvatarModeration(json);
-        }
-    });
-
-    API.$on('AVATAR-MODERATION:DELETE', function (args) {
-        this.cachedAvatarModerations.delete(args.params.targetAvatarId);
-
-        // update avatar dialog
-        var D = $app.avatarDialog;
-        if (
-            D.visible &&
-            args.params.avatarModerationType === 'block' &&
-            D.id === args.params.targetAvatarId
-        ) {
-            D.isBlocked = false;
-        }
-    });
 
     API.applyAvatarModeration = function (json) {
         // fix inconsistent Unix time response
@@ -2178,7 +2233,6 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     API.refreshFavoriteItems = function () {
-        // TODO: maybe......
         var types = {
             world: [0, favoriteRequest.getFavoriteWorlds],
             avatar: [0, favoriteRequest.getFavoriteAvatars]
@@ -2458,25 +2512,6 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     // #endregion
-    // #region | API: Visit
-
-    // no wrapper
-    API.getVisits = function () {
-        return this.call('visits', {
-            method: 'GET'
-        }).then((json) => {
-            var args = {
-                json
-            };
-            this.$emit('VISITS', args);
-            return args;
-        });
-    };
-
-    // #endregion
-    // API
-
-    // #endregion
     // #region | Misc
 
     var $timers = [];
@@ -2675,6 +2710,15 @@ console.log(`isLinux: ${LINUX}`);
         await configRepository.setString('VRCX_branch', this.branch);
     };
 
+    $app.data.vrcxId = '';
+    $app.methods.loadVrcxId = async function () {
+        this.vrcxId = await configRepository.getString('VRCX_id', '');
+        if (!this.vrcxId) {
+            this.vrcxId = crypto.randomUUID();
+            await configRepository.setString('VRCX_id', this.vrcxId);
+        }
+    };
+
     $app.methods.updateIsGameRunning = async function (
         isGameRunning,
         isSteamVRRunning,
@@ -2797,18 +2841,6 @@ console.log(`isLinux: ${LINUX}`);
             type: 'error',
             text: 'Cannot send 2FA email without saved credentials. Please login again.'
         }).show();
-    };
-
-    $app.data.isExportFriendsListDialogVisible = false;
-
-    $app.methods.showExportFriendsListDialog = function () {
-        this.isExportFriendsListDialogVisible = true;
-    };
-
-    $app.data.isExportAvatarsListDialogVisible = false;
-
-    $app.methods.showExportAvatarsListDialog = function () {
-        this.isExportAvatarsListDialogVisible = true;
     };
 
     API.$on('USER:2FA', function () {
@@ -3344,7 +3376,7 @@ console.log(`isLinux: ${LINUX}`);
                 fromGetCurrentUser &&
                 ctx.state !== 'online' &&
                 typeof ref !== 'undefined' &&
-                $utils.isRealInstance(ref.location)
+                isRealInstance(ref.location)
             ) {
                 if (this.debugFriendState) {
                     console.log(
@@ -3549,7 +3581,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.methods.getWorldName = async function (location) {
         var worldName = '';
         try {
-            var L = $utils.parseLocation(location);
+            var L = parseLocation(location);
             if (L.isRealInstance && L.worldId) {
                 var args = await worldRequest.getCachedWorld({
                     worldId: L.worldId
@@ -3569,7 +3601,7 @@ console.log(`isLinux: ${LINUX}`);
         var groupName = '';
         var groupId = data;
         if (!data.startsWith('grp_')) {
-            var L = $utils.parseLocation(data);
+            var L = parseLocation(data);
             groupId = L.groupId;
             if (!L.groupId) {
                 return '';
@@ -3607,14 +3639,6 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     // ascending
-    var compareByName = function (a, b) {
-        if (typeof a.name !== 'string' || typeof b.name !== 'string') {
-            return 0;
-        }
-        return a.name.localeCompare(b.name);
-    };
-
-    // ascending
     var compareByDisplayName = function (a, b) {
         if (
             typeof a.displayName !== 'string' ||
@@ -3623,25 +3647,6 @@ console.log(`isLinux: ${LINUX}`);
             return 0;
         }
         return a.displayName.localeCompare(b.displayName);
-    };
-
-    // descending
-    var compareByUpdatedAt = function (a, b) {
-        if (
-            typeof a.updated_at !== 'string' ||
-            typeof b.updated_at !== 'string'
-        ) {
-            return 0;
-        }
-        var A = a.updated_at.toUpperCase();
-        var B = b.updated_at.toUpperCase();
-        if (A < B) {
-            return 1;
-        }
-        if (A > B) {
-            return -1;
-        }
-        return 0;
     };
 
     var compareByMemberCount = function (a, b) {
@@ -3808,7 +3813,7 @@ console.log(`isLinux: ${LINUX}`);
         for (const sortMethod of sortMethods) {
             switch (sortMethod) {
                 case 'Sort Alphabetically':
-                    sorts.push(compareByName);
+                    sorts.push($utils.compareByName);
                     break;
                 case 'Sort Private to Bottom':
                     sorts.push(compareByPrivate);
@@ -4105,7 +4110,7 @@ console.log(`isLinux: ${LINUX}`);
             } else if (B && !A) {
                 return 1;
             }
-            return compareByName(a, b);
+            return $utils.compareByName(a, b);
         });
         if (results.length > 4) {
             results.length = 4;
@@ -4124,7 +4129,7 @@ console.log(`isLinux: ${LINUX}`);
                 const searchText = value.substr(7);
                 if (this.quickSearchItems.length > 1 && searchText.length) {
                     this.friendsListSearch = searchText;
-                    this.menuActiveIndex = 'friendsList';
+                    this.menuActiveIndex = 'friendList';
                 } else {
                     this.menuActiveIndex = 'search';
                     this.searchText = searchText;
@@ -4169,13 +4174,6 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.data.gameLogTable.pageSize = $app.data.tablePageSize;
     $app.data.feedTable.pageSize = $app.data.tablePageSize;
-    $app.data.groupMemberModerationTable.pageSize = $app.data.tablePageSize;
-    $app.data.groupBansModerationTable.pageSize = $app.data.tablePageSize;
-    $app.data.groupLogsModerationTable.pageSize = $app.data.tablePageSize;
-    $app.data.groupInvitesModerationTable.pageSize = $app.data.tablePageSize;
-    $app.data.groupJoinRequestsModerationTable.pageSize =
-        $app.data.tablePageSize;
-    $app.data.groupBlockedModerationTable.pageSize = $app.data.tablePageSize;
 
     $app.data.dontLogMeOut = false;
 
@@ -4663,154 +4661,6 @@ console.log(`isLinux: ${LINUX}`);
         return regrouped;
     };
 
-    /**
-     * Function that format the differences between two strings with HTML tags
-     * markerStartTag and markerEndTag are optional, if emitted, the differences will be highlighted with yellow and underlined.
-     * @param {*} s1
-     * @param {*} s2
-     * @param {*} markerStartTag
-     * @param {*} markerEndTag
-     * @returns An array that contains both the string 1 and string 2, which the differences are formatted with HTML tags
-     */
-    $app.methods.formatDifference = function getWordDifferences(
-        oldString,
-        newString,
-        markerAddition = '<span class="x-text-added">{{text}}</span>',
-        markerDeletion = '<span class="x-text-removed">{{text}}</span>'
-    ) {
-        [oldString, newString] = [oldString, newString].map((s) =>
-            s
-                .replaceAll(/&/g, '&amp;')
-                .replaceAll(/</g, '&lt;')
-                .replaceAll(/>/g, '&gt;')
-                .replaceAll(/"/g, '&quot;')
-                .replaceAll(/'/g, '&#039;')
-                .replaceAll(/\n/g, '<br>')
-        );
-
-        const oldWords = oldString
-            .split(/\s+/)
-            .flatMap((word) => word.split(/(<br>)/));
-        const newWords = newString
-            .split(/\s+/)
-            .flatMap((word) => word.split(/(<br>)/));
-
-        function findLongestMatch(oldStart, oldEnd, newStart, newEnd) {
-            let bestOldStart = oldStart;
-            let bestNewStart = newStart;
-            let bestSize = 0;
-
-            const lookup = new Map();
-            for (let i = oldStart; i < oldEnd; i++) {
-                const word = oldWords[i];
-                if (!lookup.has(word)) lookup.set(word, []);
-                lookup.get(word).push(i);
-            }
-
-            for (let j = newStart; j < newEnd; j++) {
-                const word = newWords[j];
-                if (!lookup.has(word)) continue;
-
-                for (const i of lookup.get(word)) {
-                    let size = 0;
-                    while (
-                        i + size < oldEnd &&
-                        j + size < newEnd &&
-                        oldWords[i + size] === newWords[j + size]
-                    ) {
-                        size++;
-                    }
-                    if (size > bestSize) {
-                        bestOldStart = i;
-                        bestNewStart = j;
-                        bestSize = size;
-                    }
-                }
-            }
-
-            return {
-                oldStart: bestOldStart,
-                newStart: bestNewStart,
-                size: bestSize
-            };
-        }
-
-        function buildDiff(oldStart, oldEnd, newStart, newEnd) {
-            const result = [];
-            const match = findLongestMatch(oldStart, oldEnd, newStart, newEnd);
-
-            if (match.size > 0) {
-                // Handle differences before the match
-                if (oldStart < match.oldStart || newStart < match.newStart) {
-                    result.push(
-                        ...buildDiff(
-                            oldStart,
-                            match.oldStart,
-                            newStart,
-                            match.newStart
-                        )
-                    );
-                }
-
-                // Add the matched words
-                result.push(
-                    oldWords
-                        .slice(match.oldStart, match.oldStart + match.size)
-                        .join(' ')
-                );
-
-                // Handle differences after the match
-                if (
-                    match.oldStart + match.size < oldEnd ||
-                    match.newStart + match.size < newEnd
-                ) {
-                    result.push(
-                        ...buildDiff(
-                            match.oldStart + match.size,
-                            oldEnd,
-                            match.newStart + match.size,
-                            newEnd
-                        )
-                    );
-                }
-            } else {
-                function build(words, start, end, pattern) {
-                    let r = [];
-                    let ts = words
-                        .slice(start, end)
-                        .filter((w) => w.length > 0)
-                        .join(' ')
-                        .split('<br>');
-                    for (let i = 0; i < ts.length; i++) {
-                        if (i > 0) r.push('<br>');
-                        if (ts[i].length < 1) continue;
-                        r.push(pattern.replace('{{text}}', ts[i]));
-                    }
-                    return r;
-                }
-
-                // Add deletions
-                if (oldStart < oldEnd)
-                    result.push(
-                        ...build(oldWords, oldStart, oldEnd, markerDeletion)
-                    );
-
-                // Add insertions
-                if (newStart < newEnd)
-                    result.push(
-                        ...build(newWords, newStart, newEnd, markerAddition)
-                    );
-            }
-
-            return result;
-        }
-
-        return buildDiff(0, oldWords.length, 0, newWords.length)
-            .join(' ')
-            .replace(/<br>[ ]+<br>/g, '<br><br>')
-            .replace(/<br> /g, '<br>');
-    };
-
     // #endregion
     // #region | App: gameLog
 
@@ -5130,7 +4980,7 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
 
-        var $location = $utils.parseLocation(this.lastLocation.location);
+        var $location = parseLocation(this.lastLocation.location);
         var instanceType = $location.accessType;
         if (instanceType === 'group') {
             if ($location.groupAccessType === 'members') {
@@ -5162,19 +5012,21 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
 
-        API.saveCurrentUser({
-            status: newStatus
-        }).then(() => {
-            var text = `Status automaticly changed to ${newStatus}`;
-            if (this.errorNoty) {
-                this.errorNoty.close();
-            }
-            this.errorNoty = new Noty({
-                type: 'info',
-                text
-            }).show();
-            console.log(text);
-        });
+        userRequest
+            .saveCurrentUser({
+                status: newStatus
+            })
+            .then(() => {
+                var text = `Status automaticly changed to ${newStatus}`;
+                if (this.errorNoty) {
+                    this.errorNoty.close();
+                }
+                this.errorNoty = new Noty({
+                    type: 'info',
+                    text
+                }).show();
+                console.log(text);
+            });
     };
 
     $app.methods.lookupUser = async function (ref) {
@@ -5201,8 +5053,8 @@ console.log(`isLinux: ${LINUX}`);
                 return;
             }
         }
-        this.$refs.searchTab.currentName = '0';
-        this.menuActiveIndex = 'search';
+        // this.$refs.searchTab.currentName = '0';
+        // this.menuActiveIndex = 'search';
     };
 
     // #endregion
@@ -5210,96 +5062,29 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.data.searchText = '';
     $app.data.searchUserResults = [];
-    $app.data.searchUserParams = {};
-    $app.data.searchWorldResults = [];
-    $app.data.searchWorldOption = '';
-    $app.data.searchWorldParams = {};
-    $app.data.searchAvatarResults = [];
-    $app.data.searchAvatarPage = [];
-    $app.data.searchAvatarPageNum = 0;
-    $app.data.searchAvatarFilter = '';
-    $app.data.searchAvatarSort = '';
-    $app.data.searchAvatarFilterRemote = '';
-    $app.data.searchGroupResults = [];
-    $app.data.searchGroupParams = {};
-    $app.data.isSearchUserLoading = false;
-    $app.data.isSearchWorldLoading = false;
-    $app.data.isSearchAvatarLoading = false;
-    $app.data.isSearchGroupLoading = false;
 
     API.$on('LOGIN', function () {
         $app.searchText = '';
         $app.searchUserResults = [];
-        $app.searchUserParams = {};
-        $app.searchWorldResults = [];
-        $app.searchWorldOption = '';
-        $app.searchWorldParams = {};
-        $app.searchAvatarResults = [];
-        $app.searchAvatarPage = [];
-        $app.searchAvatarPageNum = 0;
-        $app.searchAvatarFilter = '';
-        $app.searchAvatarSort = '';
-        $app.searchAvatarFilterRemote = '';
-        $app.searchGroupResults = [];
-        $app.searchGroupParams = {};
-        $app.isSearchUserLoading = false;
-        $app.isSearchWorldLoading = false;
-        $app.isSearchAvatarLoading = false;
     });
 
     $app.methods.clearSearch = function () {
         this.searchText = '';
-        this.searchUserParams = {};
-        this.searchWorldParams = {};
         this.searchUserResults = [];
-        this.searchWorldResults = [];
-        this.searchAvatarResults = [];
-        this.searchAvatarPage = [];
-        this.searchAvatarPageNum = 0;
-        this.searchGroupParams = {};
-        this.searchGroupResults = [];
-    };
-
-    $app.methods.search = function () {
-        switch (this.$refs.searchTab.currentName) {
-            case '0':
-                this.searchUser();
-                break;
-            case '1':
-                this.searchWorld({});
-                break;
-            case '2':
-                this.searchAvatar();
-                break;
-            case '3':
-                this.searchGroup();
-                break;
-        }
     };
 
     $app.methods.searchUserByDisplayName = async function (displayName) {
-        this.searchUserParams = {
+        const params = {
             n: 10,
             offset: 0,
             fuzzy: false,
             search: displayName
         };
-        await this.moreSearchUser();
+        await this.moreSearchUser(null, params);
     };
 
-    $app.methods.searchUser = async function () {
-        this.searchUserParams = {
-            n: 10,
-            offset: 0,
-            search: this.searchText,
-            customFields: this.searchUserByBio ? 'bio' : 'displayName',
-            sort: this.searchUserSortByLastLoggedIn ? 'last_login' : 'relevance'
-        };
-        await this.moreSearchUser();
-    };
-
-    $app.methods.moreSearchUser = async function (go) {
-        var params = this.searchUserParams;
+    $app.methods.moreSearchUser = async function (go, params) {
+        // var params = this.searchUserParams;
         if (go) {
             params.offset += params.n * go;
             if (params.offset < 0) {
@@ -5321,257 +5106,6 @@ console.log(`isLinux: ${LINUX}`);
                     }
                 }
                 this.searchUserResults = Array.from(map.values());
-                return args;
-            });
-    };
-
-    $app.data.searchWorldLabs = false;
-
-    $app.data.searchUserByBio = false;
-    $app.data.searchUserSortByLastLoggedIn = false;
-
-    $app.methods.searchWorld = function (ref) {
-        this.searchWorldOption = '';
-        var params = {
-            n: 10,
-            offset: 0
-        };
-        switch (ref.sortHeading) {
-            case 'featured':
-                params.sort = 'order';
-                params.featured = 'true';
-                break;
-            case 'trending':
-                params.sort = 'popularity';
-                params.featured = 'false';
-                break;
-            case 'updated':
-                params.sort = 'updated';
-                break;
-            case 'created':
-                params.sort = 'created';
-                break;
-            case 'publication':
-                params.sort = 'publicationDate';
-                break;
-            case 'shuffle':
-                params.sort = 'shuffle';
-                break;
-            case 'active':
-                this.searchWorldOption = 'active';
-                break;
-            case 'recent':
-                this.searchWorldOption = 'recent';
-                break;
-            case 'favorite':
-                this.searchWorldOption = 'favorites';
-                break;
-            case 'labs':
-                params.sort = 'labsPublicationDate';
-                break;
-            case 'heat':
-                params.sort = 'heat';
-                params.featured = 'false';
-                break;
-            default:
-                params.sort = 'relevance';
-                params.search = this.replaceBioSymbols(this.searchText);
-                break;
-        }
-        params.order = ref.sortOrder || 'descending';
-        if (ref.sortOwnership === 'mine') {
-            params.user = 'me';
-            params.releaseStatus = 'all';
-        }
-        if (ref.tag) {
-            params.tag = ref.tag;
-        }
-        if (!this.searchWorldLabs) {
-            if (params.tag) {
-                params.tag += ',system_approved';
-            } else {
-                params.tag = 'system_approved';
-            }
-        }
-        // TODO: option.platform
-        this.searchWorldParams = params;
-        this.moreSearchWorld();
-    };
-
-    $app.methods.moreSearchWorld = function (go) {
-        var params = this.searchWorldParams;
-        if (go) {
-            params.offset += params.n * go;
-            if (params.offset < 0) {
-                params.offset = 0;
-            }
-        }
-        this.isSearchWorldLoading = true;
-        worldRequest
-            .getWorlds(params, this.searchWorldOption)
-            .finally(() => {
-                this.isSearchWorldLoading = false;
-            })
-            .then((args) => {
-                var map = new Map();
-                for (var json of args.json) {
-                    var ref = API.cachedWorlds.get(json.id);
-                    if (typeof ref !== 'undefined') {
-                        map.set(ref.id, ref);
-                    }
-                }
-                this.searchWorldResults = Array.from(map.values());
-                return args;
-            });
-    };
-
-    $app.methods.searchAvatar = async function () {
-        this.isSearchAvatarLoading = true;
-        if (!this.searchAvatarFilter) {
-            this.searchAvatarFilter = 'all';
-        }
-        if (!this.searchAvatarSort) {
-            this.searchAvatarSort = 'name';
-        }
-        if (!this.searchAvatarFilterRemote) {
-            this.searchAvatarFilterRemote = 'all';
-        }
-        if (this.searchAvatarFilterRemote !== 'local') {
-            this.searchAvatarSort = 'name';
-        }
-        var avatars = new Map();
-        var query = this.searchText.toUpperCase();
-        if (!query) {
-            for (var ref of API.cachedAvatars.values()) {
-                switch (this.searchAvatarFilter) {
-                    case 'all':
-                        avatars.set(ref.id, ref);
-                        break;
-                    case 'public':
-                        if (ref.releaseStatus === 'public') {
-                            avatars.set(ref.id, ref);
-                        }
-                        break;
-                    case 'private':
-                        if (ref.releaseStatus === 'private') {
-                            avatars.set(ref.id, ref);
-                        }
-                        break;
-                }
-            }
-            this.isSearchAvatarLoading = false;
-        } else {
-            if (
-                this.searchAvatarFilterRemote === 'all' ||
-                this.searchAvatarFilterRemote === 'local'
-            ) {
-                for (var ref of API.cachedAvatars.values()) {
-                    var match = ref.name.toUpperCase().includes(query);
-                    if (!match && ref.description) {
-                        match = ref.description.toUpperCase().includes(query);
-                    }
-                    if (!match && ref.authorName) {
-                        match = ref.authorName.toUpperCase().includes(query);
-                    }
-                    if (match) {
-                        switch (this.searchAvatarFilter) {
-                            case 'all':
-                                avatars.set(ref.id, ref);
-                                break;
-                            case 'public':
-                                if (ref.releaseStatus === 'public') {
-                                    avatars.set(ref.id, ref);
-                                }
-                                break;
-                            case 'private':
-                                if (ref.releaseStatus === 'private') {
-                                    avatars.set(ref.id, ref);
-                                }
-                                break;
-                        }
-                    }
-                }
-            }
-            if (
-                (this.searchAvatarFilterRemote === 'all' ||
-                    this.searchAvatarFilterRemote === 'remote') &&
-                this.avatarRemoteDatabase &&
-                query.length >= 3
-            ) {
-                var data = await this.lookupAvatars('search', query);
-                if (data && typeof data === 'object') {
-                    data.forEach((avatar) => {
-                        avatars.set(avatar.id, avatar);
-                    });
-                }
-            }
-            this.isSearchAvatarLoading = false;
-        }
-        var avatarsArray = Array.from(avatars.values());
-        if (this.searchAvatarFilterRemote === 'local') {
-            switch (this.searchAvatarSort) {
-                case 'updated':
-                    avatarsArray.sort(compareByUpdatedAt);
-                    break;
-                case 'created':
-                    avatarsArray.sort($utils.compareByCreatedAt);
-                    break;
-                case 'name':
-                    avatarsArray.sort(compareByName);
-                    break;
-            }
-        }
-        this.searchAvatarPageNum = 0;
-        this.searchAvatarResults = avatarsArray;
-        this.searchAvatarPage = avatarsArray.slice(0, 10);
-    };
-
-    $app.methods.moreSearchAvatar = function (n) {
-        if (n === -1) {
-            this.searchAvatarPageNum--;
-            var offset = this.searchAvatarPageNum * 10;
-        }
-        if (n === 1) {
-            this.searchAvatarPageNum++;
-            var offset = this.searchAvatarPageNum * 10;
-        }
-        this.searchAvatarPage = this.searchAvatarResults.slice(
-            offset,
-            offset + 10
-        );
-    };
-
-    $app.methods.searchGroup = async function () {
-        this.searchGroupParams = {
-            n: 10,
-            offset: 0,
-            query: this.replaceBioSymbols(this.searchText)
-        };
-        await this.moreSearchGroup();
-    };
-
-    $app.methods.moreSearchGroup = async function (go) {
-        var params = this.searchGroupParams;
-        if (go) {
-            params.offset += params.n * go;
-            if (params.offset < 0) {
-                params.offset = 0;
-            }
-        }
-        this.isSearchGroupLoading = true;
-        await API.groupSearch(params)
-            .finally(() => {
-                this.isSearchGroupLoading = false;
-            })
-            .then((args) => {
-                var map = new Map();
-                for (var json of args.json) {
-                    var ref = API.cachedGroups.get(json.id);
-                    if (typeof ref !== 'undefined') {
-                        map.set(ref.id, ref);
-                    }
-                }
-                this.searchGroupResults = Array.from(map.values());
                 return args;
             });
     };
@@ -5809,7 +5343,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.computed.favoriteFriends = function () {
         if (this.sortFavoriteFriends) {
             this.sortFavoriteFriends = false;
-            this.favoriteFriendsSorted.sort(compareByName);
+            this.favoriteFriendsSorted.sort($utils.compareByName);
         }
         if (this.sortFavorites) {
             return this.favoriteFriends_;
@@ -5835,7 +5369,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.computed.favoriteWorlds = function () {
         if (this.sortFavoriteWorlds) {
             this.sortFavoriteWorlds = false;
-            this.favoriteWorldsSorted.sort(compareByName);
+            this.favoriteWorldsSorted.sort($utils.compareByName);
         }
         if (this.sortFavorites) {
             return this.favoriteWorlds_;
@@ -5846,7 +5380,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.computed.favoriteAvatars = function () {
         if (this.sortFavoriteAvatars) {
             this.sortFavoriteAvatars = false;
-            this.favoriteAvatarsSorted.sort(compareByName);
+            this.favoriteAvatarsSorted.sort($utils.compareByName);
         }
         if (this.sortFavorites) {
             return this.favoriteAvatars_;
@@ -5890,7 +5424,7 @@ console.log(`isLinux: ${LINUX}`);
         paginationProps: {
             small: true,
             layout: 'sizes,prev,pager,next,total',
-            pageSizes: [10, 15, 25, 50, 100]
+            pageSizes: [10, 15, 20, 25, 50, 100]
         }
     };
 
@@ -5916,36 +5450,6 @@ console.log(`isLinux: ${LINUX}`);
 
     API.$on('FRIEND:DELETE', function (args) {
         $app.deleteFriendship(args.params.userId);
-    });
-
-    API.$on('FRIEND:REQUEST', function (args) {
-        var ref = this.cachedUsers.get(args.params.userId);
-        if (typeof ref === 'undefined') {
-            return;
-        }
-        var friendLogHistory = {
-            created_at: new Date().toJSON(),
-            type: 'FriendRequest',
-            userId: ref.id,
-            displayName: ref.displayName
-        };
-        $app.friendLogTable.data.push(friendLogHistory);
-        database.addFriendLogHistory(friendLogHistory);
-    });
-
-    API.$on('FRIEND:REQUEST:CANCEL', function (args) {
-        var ref = this.cachedUsers.get(args.params.userId);
-        if (typeof ref === 'undefined') {
-            return;
-        }
-        var friendLogHistory = {
-            created_at: new Date().toJSON(),
-            type: 'CancelFriendRequest',
-            userId: ref.id,
-            displayName: ref.displayName
-        };
-        $app.friendLogTable.data.push(friendLogHistory);
-        database.addFriendLogHistory(friendLogHistory);
     });
 
     $app.data.friendLogInitStatus = false;
@@ -6227,24 +5731,6 @@ console.log(`isLinux: ${LINUX}`);
         ctx.trustLevel = ref.$trustLevel;
     };
 
-    $app.methods.deleteFriendLog = function (row) {
-        $app.removeFromArray(this.friendLogTable.data, row);
-        database.deleteFriendLogHistory(row.rowId);
-    };
-
-    $app.methods.deleteFriendLogPrompt = function (row) {
-        this.$confirm('Continue? Delete Log', 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    this.deleteFriendLog(row);
-                }
-            }
-        });
-    };
-
     // #endregion
     // #region | App: Moderation
 
@@ -6311,7 +5797,7 @@ console.log(`isLinux: ${LINUX}`);
         paginationProps: {
             small: true,
             layout: 'sizes,prev,pager,next,total',
-            pageSizes: [10, 15, 25, 50, 100]
+            pageSizes: [10, 15, 20, 25, 50, 100]
         }
     };
 
@@ -6351,7 +5837,7 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
 
-        var L = $utils.parseLocation(currentLocation);
+        var L = parseLocation(currentLocation);
         worldRequest
             .getCachedWorld({
                 worldId: L.worldId
@@ -6434,125 +5920,6 @@ console.log(`isLinux: ${LINUX}`);
         }
     });
 
-    $app.methods.acceptFriendRequestNotification = function (row) {
-        // FIXME: 메시지 수정
-        this.$confirm('Continue? Accept Friend Request', 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    notificationRequest.acceptFriendRequestNotification({
-                        notificationId: row.id
-                    });
-                }
-            }
-        });
-    };
-
-    $app.methods.hideNotification = function (row) {
-        if (row.type === 'ignoredFriendRequest') {
-            friendRequest.deleteHiddenFriendRequest(
-                {
-                    notificationId: row.id
-                },
-                row.senderUserId
-            );
-        } else {
-            notificationRequest.hideNotification({
-                notificationId: row.id
-            });
-        }
-    };
-
-    $app.methods.hideNotificationPrompt = function (row) {
-        this.$confirm(`Continue? Decline ${row.type}`, 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    this.hideNotification(row);
-                }
-            }
-        });
-    };
-
-    $app.methods.deleteNotificationLog = function (row) {
-        $app.removeFromArray(this.notificationTable.data, row);
-        if (
-            row.type !== 'friendRequest' &&
-            row.type !== 'ignoredFriendRequest'
-        ) {
-            database.deleteNotification(row.id);
-        }
-    };
-
-    $app.methods.deleteNotificationLogPrompt = function (row) {
-        this.$confirm(`Continue? Delete ${row.type}`, 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    this.deleteNotificationLog(row);
-                }
-            }
-        });
-    };
-
-    $app.methods.acceptRequestInvite = function (row) {
-        this.$confirm('Continue? Send Invite', 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    var currentLocation = this.lastLocation.location;
-                    if (this.lastLocation.location === 'traveling') {
-                        currentLocation = this.lastLocationDestination;
-                    }
-                    var L = $utils.parseLocation(currentLocation);
-                    worldRequest
-                        .getCachedWorld({
-                            worldId: L.worldId
-                        })
-                        .then((args) => {
-                            notificationRequest
-                                .sendInvite(
-                                    {
-                                        instanceId: L.tag,
-                                        worldId: L.tag,
-                                        worldName: args.ref.name,
-                                        rsvp: true
-                                    },
-                                    row.senderUserId
-                                )
-                                .then((_args) => {
-                                    this.$message('Invite sent');
-                                    notificationRequest.hideNotification({
-                                        notificationId: row.id
-                                    });
-                                    return _args;
-                                });
-                        });
-                }
-            }
-        });
-    };
-
-    // Save Table Filters
-    $app.methods.saveTableFilters = async function () {
-        await configRepository.setString(
-            'VRCX_friendLogTableFilters',
-            JSON.stringify(this.friendLogTable.filters[0].value)
-        );
-        await configRepository.setString(
-            'VRCX_notificationTableFilters',
-            JSON.stringify(this.notificationTable.filters[0].value)
-        );
-    };
-
     $app.data.feedTable.filter = JSON.parse(
         await configRepository.getString('VRCX_feedTableFilters', '[]')
     );
@@ -6592,9 +5959,6 @@ console.log(`isLinux: ${LINUX}`);
     // #endregion
     // #region | App: Profile + Settings
 
-    $app.data.configTreeData = [];
-    $app.data.currentUserTreeData = [];
-    $app.data.currentUserFeedbackData = [];
     $app.data.pastDisplayNameTable = {
         data: [],
         tableProps: {
@@ -6647,14 +6011,6 @@ console.log(`isLinux: ${LINUX}`);
         },
         layout: 'table',
         visible: false
-    };
-    $app.data.socialStatusHistoryTable = {
-        data: [],
-        tableProps: {
-            stripe: true,
-            size: 'mini'
-        },
-        layout: 'table'
     };
     $app.data.currentInstanceUserList = {
         data: [],
@@ -7566,16 +6922,13 @@ console.log(`isLinux: ${LINUX}`);
             this.autoAcceptInviteRequests
         );
     };
-    $app.data.vrcRegistryAutoBackup = await configRepository.getBool(
-        'VRCX_vrcRegistryAutoBackup',
-        true
-    );
-    $app.methods.saveVrcRegistryAutoBackup = async function () {
-        await configRepository.setBool(
-            'VRCX_vrcRegistryAutoBackup',
-            this.vrcRegistryAutoBackup
-        );
+
+    $app.data.isRegistryBackupDialogVisible = false;
+
+    $app.methods.showRegistryBackupDialog = function () {
+        this.isRegistryBackupDialogVisible = true;
     };
+
     $app.data.sidebarSortMethod1 = '';
     $app.data.sidebarSortMethod2 = '';
     $app.data.sidebarSortMethod3 = '';
@@ -7919,7 +7272,8 @@ console.log(`isLinux: ${LINUX}`);
         'VRCX_notificationPosition',
         'topCenter'
     );
-    $app.methods.changeNotificationPosition = async function () {
+    $app.methods.changeNotificationPosition = async function (value) {
+        this.notificationPosition = value;
         await configRepository.setString(
             'VRCX_notificationPosition',
             this.notificationPosition
@@ -8014,7 +7368,7 @@ console.log(`isLinux: ${LINUX}`);
             'wrld_74970324-58e8-4239-a17b-2c59dfdf00db',
             'wrld_266523e8-9161-40da-acd0-6bd82e075833'
         ];
-        var L = $utils.parseLocation(location);
+        var L = parseLocation(location);
         if (rpcWorlds.includes(L.worldId)) {
             return true;
         }
@@ -8059,7 +7413,6 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     API.$on('LOGIN', function () {
-        $app.currentUserTreeData = [];
         $app.pastDisplayNameTable.data = [];
     });
 
@@ -8068,31 +7421,6 @@ console.log(`isLinux: ${LINUX}`);
             $app.pastDisplayNameTable.data = args.ref.pastDisplayNames;
         }
     });
-
-    API.$on('VISITS', function (args) {
-        $app.visits = args.json;
-    });
-
-    $app.methods.resetHome = function () {
-        this.$confirm('Continue? Reset Home', 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    API.saveCurrentUser({
-                        homeLocation: ''
-                    }).then((args) => {
-                        this.$message({
-                            message: 'Home world has been reset',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-                }
-            }
-        });
-    };
 
     $app.methods.updateOpenVR = function () {
         if (
@@ -8177,16 +7505,6 @@ console.log(`isLinux: ${LINUX}`);
         speechSynthesis.speak(tts);
     };
 
-    $app.methods.refreshConfigTreeData = async function () {
-        await API.getConfig();
-        this.configTreeData = $utils.buildTreeData(API.cachedConfig);
-    };
-
-    $app.methods.refreshCurrentUserTreeData = async function () {
-        await API.getCurrentUser();
-        this.currentUserTreeData = $utils.buildTreeData(API.currentUser);
-    };
-
     $app.methods.directAccessPaste = function () {
         AppApi.GetClipboard().then((clipboard) => {
             if (!this.directAccessParse(clipboard.trim())) {
@@ -8263,8 +7581,18 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.showGroupDialogShortCode = function (shortCode) {
-        API.groupStrictsearch({ query: shortCode }).then((args) => {
-            for (var group of args.json) {
+        groupRequest.groupStrictsearch({ query: shortCode }).then((args) => {
+            for (const group of args.json) {
+                // API.$on('GROUP:STRICTSEARCH', function (args) {
+                // for (var json of args.json) {
+                API.$emit('GROUP', {
+                    group,
+                    params: {
+                        groupId: group.id
+                    }
+                });
+                // }
+                // });
                 if (`${group.shortCode}.${group.discriminator}` === shortCode) {
                     this.showGroupDialog(group.id);
                 }
@@ -8394,8 +7722,9 @@ console.log(`isLinux: ${LINUX}`);
             name: $t('dialog.user.worlds.order.descending'),
             value: 'descending'
         },
+        // because userDialogGroupSortingOptions, just i18n key
         groupSorting: {
-            name: $t('dialog.user.groups.sorting.alphabetical'),
+            name: 'dialog.user.groups.sorting.alphabetical',
             value: 'alphabetical'
         },
         avatarSorting: 'update',
@@ -8434,42 +7763,6 @@ console.log(`isLinux: ${LINUX}`);
         dateFriendedInfo: []
     };
 
-    $app.methods.setUserDialogWorldSorting = async function (sortOrder) {
-        var D = this.userDialog;
-        if (D.worldSorting === sortOrder) {
-            return;
-        }
-        D.worldSorting = sortOrder;
-        await this.refreshUserDialogWorlds();
-    };
-
-    $app.methods.setUserDialogWorldOrder = async function (order) {
-        var D = this.userDialog;
-        if (D.worldOrder === order) {
-            return;
-        }
-        D.worldOrder = order;
-        await this.refreshUserDialogWorlds();
-    };
-
-    $app.methods.setUserDialogGroupSorting = async function (sortOrder) {
-        var D = this.userDialog;
-        if (D.groupSorting === sortOrder) {
-            return;
-        }
-        D.groupSorting = sortOrder;
-        await this.sortCurrentUserGroups();
-    };
-
-    $app.methods.getFaviconUrl = function (resource) {
-        try {
-            var url = new URL(resource);
-            return `https://icons.duckduckgo.com/ip2/${url.host}.ico`;
-        } catch (err) {
-            return '';
-        }
-    };
-
     API.$on('LOGOUT', function () {
         $app.userDialog.visible = false;
     });
@@ -8492,6 +7785,18 @@ console.log(`isLinux: ${LINUX}`);
         }
     });
 
+    API.$on('USER', function (args) {
+        // refresh user dialog JSON tab
+        if (
+            !$app.userDialog.visible ||
+            $app.userDialog.id !== args.ref.id ||
+            $app.$refs.userDialogTabs?.currentName !== '5'
+        ) {
+            return;
+        }
+        $app.refreshUserDialogTreeData();
+    });
+
     API.$on('WORLD', function (args) {
         var D = $app.userDialog;
         if (D.visible === false || D.$location.worldId !== args.ref.id) {
@@ -8509,18 +7814,6 @@ console.log(`isLinux: ${LINUX}`);
         D.isFriend = json.isFriend;
         D.incomingRequest = json.incomingRequest;
         D.outgoingRequest = json.outgoingRequest;
-    });
-
-    API.$on('FRIEND:REQUEST', function (args) {
-        var D = $app.userDialog;
-        if (D.visible === false || D.id !== args.params.userId) {
-            return;
-        }
-        if (args.json.success) {
-            D.isFriend = true;
-        } else {
-            D.outgoingRequest = true;
-        }
     });
 
     API.$on('FRIEND:REQUEST:CANCEL', function (args) {
@@ -8653,7 +7946,6 @@ console.log(`isLinux: ${LINUX}`);
         if (!userId) {
             return;
         }
-        this.$nextTick(() => $app.adjustDialogZ(this.$refs.userDialog.$el));
         const D = this.userDialog;
         D.id = userId;
         D.treeData = [];
@@ -8713,7 +8005,6 @@ console.log(`isLinux: ${LINUX}`);
         D.dateFriended = '';
         D.unFriended = false;
         D.dateFriendedInfo = [];
-        this.userDialogGroupEditMode = false;
         if (userId === API.currentUser.id) {
             this.getWorldName(API.currentUser.homeLocation).then(
                 (worldName) => {
@@ -8773,64 +8064,6 @@ console.log(`isLinux: ${LINUX}`);
                             D.outgoingRequest = true;
                         }
                         this.applyUserDialogLocation(true);
-
-                        // init last acitve tab data
-                        if (this.$refs.userDialogTabs.currentName === '0') {
-                            this.userDialogLastActiveTab = $t(
-                                'dialog.user.info.header'
-                            );
-                        } else if (
-                            this.$refs.userDialogTabs.currentName === '1'
-                        ) {
-                            this.userDialogLastActiveTab = $t(
-                                'dialog.user.groups.header'
-                            );
-                            if (this.userDialogLastGroup !== userId) {
-                                this.userDialogLastGroup = userId;
-                                this.getUserGroups(userId);
-                            }
-                        } else if (
-                            this.$refs.userDialogTabs.currentName === '2'
-                        ) {
-                            this.userDialogLastActiveTab = $t(
-                                'dialog.user.worlds.header'
-                            );
-                            this.setUserDialogWorlds(userId);
-                            if (this.userDialogLastWorld !== userId) {
-                                this.userDialogLastWorld = userId;
-                                this.refreshUserDialogWorlds();
-                            }
-                        } else if (
-                            this.$refs.userDialogTabs.currentName === '3'
-                        ) {
-                            this.userDialogLastActiveTab = $t(
-                                'dialog.user.favorite_worlds.header'
-                            );
-                            if (this.userDialogLastFavoriteWorld !== userId) {
-                                this.userDialogLastFavoriteWorld = userId;
-                                this.getUserFavoriteWorlds(userId);
-                            }
-                        } else if (
-                            this.$refs.userDialogTabs.currentName === '4'
-                        ) {
-                            this.userDialogLastActiveTab = $t(
-                                'dialog.user.avatars.header'
-                            );
-                            this.setUserDialogAvatars(userId);
-                            this.userDialogLastAvatar = userId;
-                            if (userId === API.currentUser.id) {
-                                this.refreshUserDialogAvatars();
-                            }
-                            this.setUserDialogAvatarsRemote(userId);
-                        } else if (
-                            this.$refs.userDialogTabs.currentName === '5'
-                        ) {
-                            this.userDialogLastActiveTab = $t(
-                                'dialog.user.json.header'
-                            );
-                            this.refreshUserDialogTreeData();
-                        }
-                        // init last acitve tab data - end
 
                         if (args.cache) {
                             userRequest.getUser(args.params);
@@ -8912,14 +8145,18 @@ console.log(`isLinux: ${LINUX}`);
                                     }
                                 });
                         }
-                        API.getRepresentedGroup({ userId }).then((args1) => {
-                            D.representedGroup = args1.json;
-                            D.representedGroup.$thumbnailUrl =
-                                this.getSmallThumbnailUrl(args1.json.iconUrl);
-                            if (!args1.json || !args1.json.isRepresenting) {
-                                D.isRepresentedGroupLoading = false;
-                            }
-                        });
+                        groupRequest
+                            .getRepresentedGroup({ userId })
+                            .then((args1) => {
+                                D.representedGroup = args1.json;
+                                D.representedGroup.$thumbnailUrl =
+                                    convertFileUrlToImageUrl(
+                                        args1.json.iconUrl
+                                    );
+                                if (!args1.json || !args1.json.isRepresenting) {
+                                    D.isRepresentedGroupLoading = false;
+                                }
+                            });
                         D.loading = false;
                     });
                 }
@@ -8934,7 +8171,7 @@ console.log(`isLinux: ${LINUX}`);
         if (!D.visible) {
             return;
         }
-        var L = $utils.parseLocation(D.ref.$location.tag);
+        var L = parseLocation(D.ref.$location.tag);
         if (updateInstanceOccupants && L.isRealInstance) {
             instanceRequest.getInstance({
                 worldId: L.worldId,
@@ -9301,7 +8538,7 @@ console.log(`isLinux: ${LINUX}`);
                 bundleSizes: [],
                 lastUpdated: ''
             };
-            var L = $utils.parseLocation(instanceId);
+            var L = parseLocation(instanceId);
             this.currentInstanceLocation = L;
             worldRequest
                 .getWorld({
@@ -9309,7 +8546,7 @@ console.log(`isLinux: ${LINUX}`);
                 })
                 .then((args) => {
                     this.currentInstanceWorld.ref = args.ref;
-                    var { isPC, isQuest, isIos } = this.getAvailablePlatforms(
+                    var { isPC, isQuest, isIos } = getAvailablePlatforms(
                         args.ref.unityPackages
                     );
                     this.currentInstanceWorld.isPC = isPC;
@@ -9321,7 +8558,7 @@ console.log(`isLinux: ${LINUX}`);
                         );
                     this.currentInstanceWorld.focusViewDisabled =
                         args.ref?.tags.includes('feature_focus_view_disabled');
-                    this.checkVRChatCache(args.ref).then((cacheInfo) => {
+                    checkVRChatCache(args.ref).then((cacheInfo) => {
                         if (cacheInfo.Item1 > 0) {
                             this.currentInstanceWorld.inCache = true;
                             this.currentInstanceWorld.cacheSize = `${(
@@ -9341,13 +8578,13 @@ console.log(`isLinux: ${LINUX}`);
                 })
                 .then((args) => {
                     this.currentInstanceWorld.ref = args.ref;
-                    var { isPC, isQuest, isIos } = this.getAvailablePlatforms(
+                    var { isPC, isQuest, isIos } = getAvailablePlatforms(
                         args.ref.unityPackages
                     );
                     this.currentInstanceWorld.isPC = isPC;
                     this.currentInstanceWorld.isQuest = isQuest;
                     this.currentInstanceWorld.isIos = isIos;
-                    this.checkVRChatCache(args.ref).then((cacheInfo) => {
+                    checkVRChatCache(args.ref).then((cacheInfo) => {
                         if (cacheInfo.Item1 > 0) {
                             this.currentInstanceWorld.inCache = true;
                             this.currentInstanceWorld.cacheSize = `${(
@@ -9357,12 +8594,12 @@ console.log(`isLinux: ${LINUX}`);
                     });
                 });
         }
-        if ($utils.isRealInstance(instanceId)) {
+        if (isRealInstance(instanceId)) {
             var ref = API.cachedInstances.get(instanceId);
             if (typeof ref !== 'undefined') {
                 this.currentInstanceWorld.instance = ref;
             } else {
-                var L = $utils.parseLocation(instanceId);
+                var L = parseLocation(instanceId);
                 if (L.isRealInstance) {
                     instanceRequest
                         .getInstance({
@@ -9377,141 +8614,10 @@ console.log(`isLinux: ${LINUX}`);
         }
     };
 
-    $app.methods.getAvailablePlatforms = function (unityPackages) {
-        var isPC = false;
-        var isQuest = false;
-        var isIos = false;
-        if (typeof unityPackages === 'object') {
-            for (var unityPackage of unityPackages) {
-                if (
-                    unityPackage.variant &&
-                    unityPackage.variant !== 'standard' &&
-                    unityPackage.variant !== 'security'
-                ) {
-                    continue;
-                }
-                if (unityPackage.platform === 'standalonewindows') {
-                    isPC = true;
-                } else if (unityPackage.platform === 'android') {
-                    isQuest = true;
-                } else if (unityPackage.platform === 'ios') {
-                    isIos = true;
-                }
-            }
-        }
-        return { isPC, isQuest, isIos };
-    };
-
-    $app.methods.getPlatformInfo = function (unityPackages) {
-        var pc = {};
-        var android = {};
-        var ios = {};
-        if (typeof unityPackages === 'object') {
-            for (var unityPackage of unityPackages) {
-                if (
-                    unityPackage.variant &&
-                    unityPackage.variant !== 'standard' &&
-                    unityPackage.variant !== 'security'
-                ) {
-                    continue;
-                }
-                if (unityPackage.platform === 'standalonewindows') {
-                    if (
-                        unityPackage.performanceRating === 'None' &&
-                        pc.performanceRating
-                    ) {
-                        continue;
-                    }
-                    pc = unityPackage;
-                } else if (unityPackage.platform === 'android') {
-                    if (
-                        unityPackage.performanceRating === 'None' &&
-                        android.performanceRating
-                    ) {
-                        continue;
-                    }
-                    android = unityPackage;
-                } else if (unityPackage.platform === 'ios') {
-                    if (
-                        unityPackage.performanceRating === 'None' &&
-                        ios.performanceRating
-                    ) {
-                        continue;
-                    }
-                    ios = unityPackage;
-                }
-            }
-        }
-        return { pc, android, ios };
-    };
-
-    $app.methods.selectCurrentInstanceRow = function (val) {
-        if (val === null) {
-            return;
-        }
-        var ref = val.ref;
-        if (ref.id) {
-            this.showUserDialog(ref.id);
-        } else {
-            this.lookupUser(ref);
-        }
-    };
-
     $app.methods.updateTimers = function () {
         for (var $timer of $timers) {
             $timer.update();
         }
-    };
-
-    $app.methods.setUserDialogWorlds = function (userId) {
-        var worlds = [];
-        for (var ref of API.cachedWorlds.values()) {
-            if (ref.authorId === userId) {
-                worlds.push(ref);
-            }
-        }
-        $app.userDialog.worlds = worlds;
-    };
-
-    $app.methods.setUserDialogAvatars = function (userId) {
-        var avatars = new Set();
-        this.userDialogAvatars.forEach((avatar) => {
-            avatars.add(avatar.id, avatar);
-        });
-        for (var ref of API.cachedAvatars.values()) {
-            if (ref.authorId === userId && !avatars.has(ref.id)) {
-                this.userDialog.avatars.push(ref);
-            }
-        }
-        this.sortUserDialogAvatars(this.userDialog.avatars);
-    };
-
-    $app.methods.setUserDialogAvatarsRemote = async function (userId) {
-        if (this.avatarRemoteDatabase && userId !== API.currentUser.id) {
-            this.userDialog.isAvatarsLoading = true;
-            var data = await this.lookupAvatars('authorId', userId);
-            var avatars = new Set();
-            this.userDialogAvatars.forEach((avatar) => {
-                avatars.add(avatar.id, avatar);
-            });
-            if (data && typeof data === 'object') {
-                data.forEach((avatar) => {
-                    if (avatar.id && !avatars.has(avatar.id)) {
-                        if (avatar.authorId === userId) {
-                            this.userDialog.avatars.push(avatar);
-                        } else {
-                            console.error(
-                                `Avatar authorId mismatch for ${avatar.id} - ${avatar.name}`
-                            );
-                        }
-                    }
-                });
-            }
-            this.userDialog.avatarSorting = 'name';
-            this.userDialog.avatarReleaseStatus = 'all';
-            this.userDialog.isAvatarsLoading = false;
-        }
-        this.sortUserDialogAvatars(this.userDialog.avatars);
     };
 
     $app.methods.lookupAvatars = async function (type, search) {
@@ -9524,7 +8630,8 @@ console.log(`isLinux: ${LINUX}`);
                     }?${type}=${encodeURIComponent(search)}&n=5000`,
                     method: 'GET',
                     headers: {
-                        Referer: 'https://vrcx.app'
+                        Referer: 'https://vrcx.app',
+                        'VRCX-ID': this.vrcxId
                     }
                 });
                 var json = JSON.parse(response.data);
@@ -9582,7 +8689,7 @@ console.log(`isLinux: ${LINUX}`);
             var url = this.avatarRemoteDatabaseProviderList[i];
             var avatarArray = await this.lookupAvatarsByAuthor(url, authorId);
             for (var avatar of avatarArray) {
-                if ($utils.extractFileId(avatar.imageUrl) === fileId) {
+                if (extractFileId(avatar.imageUrl) === fileId) {
                     return avatar.id;
                 }
             }
@@ -9600,7 +8707,8 @@ console.log(`isLinux: ${LINUX}`);
                 url: `${url}?authorId=${encodeURIComponent(authorId)}`,
                 method: 'GET',
                 headers: {
-                    Referer: 'https://vrcx.app'
+                    Referer: 'https://vrcx.app',
+                    'VRCX-ID': this.vrcxId
                 }
             });
             var json = JSON.parse(response.data);
@@ -9641,61 +8749,11 @@ console.log(`isLinux: ${LINUX}`);
     $app.methods.sortUserDialogAvatars = function (array) {
         var D = this.userDialog;
         if (D.avatarSorting === 'update') {
-            array.sort(compareByUpdatedAt);
+            array.sort($utils.compareByUpdatedAt);
         } else {
-            array.sort(compareByName);
+            array.sort($utils.compareByName);
         }
         D.avatars = array;
-    };
-
-    $app.methods.refreshUserDialogWorlds = function () {
-        var D = this.userDialog;
-        if (D.isWorldsLoading) {
-            return;
-        }
-        D.isWorldsLoading = true;
-        var params = {
-            n: 50,
-            offset: 0,
-            sort: this.userDialog.worldSorting.value,
-            order: this.userDialog.worldOrder.value,
-            // user: 'friends',
-            userId: D.id,
-            releaseStatus: 'public'
-        };
-        if (params.userId === API.currentUser.id) {
-            params.user = 'me';
-            params.releaseStatus = 'all';
-        }
-        var map = new Map();
-        for (var ref of API.cachedWorlds.values()) {
-            if (
-                ref.authorId === D.id &&
-                (ref.authorId === API.currentUser.id ||
-                    ref.releaseStatus === 'public')
-            ) {
-                API.cachedWorlds.delete(ref.id);
-            }
-        }
-        API.bulk({
-            fn: worldRequest.getWorlds,
-            N: -1,
-            params,
-            handle: (args) => {
-                for (var json of args.json) {
-                    var $ref = API.cachedWorlds.get(json.id);
-                    if (typeof $ref !== 'undefined') {
-                        map.set($ref.id, $ref);
-                    }
-                }
-            },
-            done: () => {
-                if (D.id === params.userId) {
-                    this.setUserDialogWorlds(D.id);
-                }
-                D.isWorldsLoading = false;
-            }
-        });
     };
 
     $app.methods.refreshUserDialogAvatars = function (fileId) {
@@ -9742,7 +8800,7 @@ console.log(`isLinux: ${LINUX}`);
                 if (fileId) {
                     D.loading = false;
                     for (let ref of array) {
-                        if ($utils.extractFileId(ref.imageUrl) === fileId) {
+                        if (extractFileId(ref.imageUrl) === fileId) {
                             this.showAvatarDialog(ref.id);
                             return;
                         }
@@ -9756,254 +8814,6 @@ console.log(`isLinux: ${LINUX}`);
         });
     };
 
-    var performUserDialogCommand = (command, userId) => {
-        switch (command) {
-            case 'Delete Favorite':
-                favoriteRequest.deleteFavorite({
-                    objectId: userId
-                });
-                break;
-            case 'Accept Friend Request':
-                var key = API.getFriendRequest(userId);
-                if (key === '') {
-                    friendRequest.sendFriendRequest({
-                        userId
-                    });
-                } else {
-                    notificationRequest.acceptFriendRequestNotification({
-                        notificationId: key
-                    });
-                }
-                break;
-            case 'Decline Friend Request':
-                var key = API.getFriendRequest(userId);
-                if (key === '') {
-                    friendRequest.cancelFriendRequest({
-                        userId
-                    });
-                } else {
-                    notificationRequest.hideNotification({
-                        notificationId: key
-                    });
-                }
-                break;
-            case 'Cancel Friend Request':
-                friendRequest.cancelFriendRequest({
-                    userId
-                });
-                break;
-            case 'Send Friend Request':
-                friendRequest.sendFriendRequest({
-                    userId
-                });
-                break;
-            case 'Moderation Unblock':
-                playerModerationRequest.deletePlayerModeration({
-                    moderated: userId,
-                    type: 'block'
-                });
-                break;
-            case 'Moderation Block':
-                playerModerationRequest.sendPlayerModeration({
-                    moderated: userId,
-                    type: 'block'
-                });
-                break;
-            case 'Moderation Unmute':
-                playerModerationRequest.deletePlayerModeration({
-                    moderated: userId,
-                    type: 'mute'
-                });
-                break;
-            case 'Moderation Mute':
-                playerModerationRequest.sendPlayerModeration({
-                    moderated: userId,
-                    type: 'mute'
-                });
-                break;
-            case 'Moderation Enable Avatar Interaction':
-                playerModerationRequest.deletePlayerModeration({
-                    moderated: userId,
-                    type: 'interactOff'
-                });
-                break;
-            case 'Moderation Disable Avatar Interaction':
-                playerModerationRequest.sendPlayerModeration({
-                    moderated: userId,
-                    type: 'interactOff'
-                });
-                break;
-            case 'Moderation Enable Chatbox':
-                playerModerationRequest.deletePlayerModeration({
-                    moderated: userId,
-                    type: 'muteChat'
-                });
-                break;
-            case 'Moderation Disable Chatbox':
-                playerModerationRequest.sendPlayerModeration({
-                    moderated: userId,
-                    type: 'muteChat'
-                });
-                break;
-            case 'Report Hacking':
-                $app.reportUserForHacking(userId);
-                break;
-            case 'Unfriend':
-                friendRequest.deleteFriend({
-                    userId
-                });
-                break;
-        }
-    };
-
-    $app.methods.userDialogCommand = function (command) {
-        var D = this.userDialog;
-        if (D.visible === false) {
-            return;
-        }
-        if (command === 'Refresh') {
-            this.showUserDialog(D.id);
-        } else if (command === 'Share') {
-            this.copyUserURL(D.id);
-        } else if (command === 'Add Favorite') {
-            this.showFavoriteDialog('friend', D.id);
-        } else if (command === 'Edit Social Status') {
-            this.showSocialStatusDialog();
-        } else if (command === 'Edit Language') {
-            this.showLanguageDialog();
-        } else if (command === 'Edit Bio') {
-            this.showBioDialog();
-        } else if (command === 'Edit Pronouns') {
-            this.showPronounsDialog();
-        } else if (command === 'Logout') {
-            this.logout();
-        } else if (command === 'Request Invite') {
-            notificationRequest
-                .sendRequestInvite(
-                    {
-                        platform: 'standalonewindows'
-                    },
-                    D.id
-                )
-                .then((args) => {
-                    this.$message('Request invite sent');
-                    return args;
-                });
-        } else if (command === 'Invite Message') {
-            var L = $utils.parseLocation(this.lastLocation.location);
-            worldRequest
-                .getCachedWorld({
-                    worldId: L.worldId
-                })
-                .then((args) => {
-                    this.showSendInviteDialog(
-                        {
-                            instanceId: this.lastLocation.location,
-                            worldId: this.lastLocation.location,
-                            worldName: args.ref.name
-                        },
-                        D.id
-                    );
-                });
-        } else if (command === 'Request Invite Message') {
-            this.showSendInviteRequestDialog(
-                {
-                    platform: 'standalonewindows'
-                },
-                D.id
-            );
-        } else if (command === 'Invite') {
-            var currentLocation = this.lastLocation.location;
-            if (this.lastLocation.location === 'traveling') {
-                currentLocation = this.lastLocationDestination;
-            }
-            var L = $utils.parseLocation(currentLocation);
-            worldRequest
-                .getCachedWorld({
-                    worldId: L.worldId
-                })
-                .then((args) => {
-                    notificationRequest
-                        .sendInvite(
-                            {
-                                instanceId: L.tag,
-                                worldId: L.tag,
-                                worldName: args.ref.name
-                            },
-                            D.id
-                        )
-                        .then((_args) => {
-                            this.$message('Invite sent');
-                            return _args;
-                        });
-                });
-        } else if (command === 'Show Avatar Author') {
-            var { currentAvatarImageUrl } = D.ref;
-            this.showAvatarAuthorDialog(
-                D.id,
-                D.$avatarInfo.ownerId,
-                currentAvatarImageUrl
-            );
-        } else if (command === 'Show Fallback Avatar Details') {
-            var { fallbackAvatar } = D.ref;
-            if (fallbackAvatar) {
-                this.showAvatarDialog(fallbackAvatar);
-            } else {
-                this.$message({
-                    message: 'No fallback avatar set',
-                    type: 'error'
-                });
-            }
-        } else if (command === 'Previous Images') {
-            this.displayPreviousImages('User', 'Display');
-        } else if (command === 'Previous Instances') {
-            this.showPreviousInstancesUserDialog(D.ref);
-        } else if (command === 'Manage Gallery') {
-            this.showGalleryDialog();
-        } else if (command === 'Invite To Group') {
-            this.showInviteGroupDialog('', D.id);
-        } else if (command === 'Send Boop') {
-            this.showSendBoopDialog(D.id);
-        } else if (command === 'Hide Avatar') {
-            if (D.isHideAvatar) {
-                this.setPlayerModeration(D.id, 0);
-            } else {
-                this.setPlayerModeration(D.id, 4);
-            }
-        } else if (command === 'Show Avatar') {
-            if (D.isShowAvatar) {
-                this.setPlayerModeration(D.id, 0);
-            } else {
-                this.setPlayerModeration(D.id, 5);
-            }
-        } else {
-            const i18nPreFix = 'dialog.user.actions.';
-            const formattedCommand = command.toLowerCase().replace(/ /g, '_');
-            const displayCommandText = $t(
-                `${i18nPreFix}${formattedCommand}`
-            ).includes('i18nPreFix')
-                ? command
-                : $t(`${i18nPreFix}${formattedCommand}`);
-
-            this.$confirm(
-                $t('confirm.message', {
-                    command: displayCommandText
-                }),
-                $t('confirm.title'),
-                {
-                    confirmButtonText: $t('confirm.confirm_button'),
-                    cancelButtonText: $t('confirm.cancel_button'),
-                    type: 'info',
-                    callback: (action) => {
-                        if (action === 'confirm') {
-                            performUserDialogCommand(command, D.id);
-                        }
-                    }
-                }
-            );
-        }
-    };
-
     $app.methods.refreshUserDialogTreeData = function () {
         var D = this.userDialog;
         if (D.id === API.currentUser.id) {
@@ -10015,25 +8825,6 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
         D.treeData = $utils.buildTreeData(D.ref);
-    };
-
-    $app.methods.changeUserDialogAvatarSorting = function (sortOption) {
-        const D = this.userDialog;
-        D.avatarSorting = sortOption;
-        this.sortUserDialogAvatars(D.avatars);
-    };
-
-    $app.computed.userDialogAvatars = function () {
-        var { avatars, avatarReleaseStatus } = this.userDialog;
-        if (
-            avatarReleaseStatus === 'public' ||
-            avatarReleaseStatus === 'private'
-        ) {
-            return avatars.filter(
-                (avatar) => avatar.releaseStatus === avatarReleaseStatus
-            );
-        }
-        return avatars;
     };
 
     // #endregion
@@ -10083,7 +8874,7 @@ console.log(`isLinux: ${LINUX}`);
         D.focusViewDisabled = ref.tags?.includes('feature_focus_view_disabled');
         $app.applyWorldDialogInstances();
         for (var room of D.rooms) {
-            if ($utils.isRealInstance(room.tag)) {
+            if (isRealInstance(room.tag)) {
                 instanceRequest.getInstance({
                     worldId: D.id,
                     instanceId: room.id
@@ -10108,7 +8899,7 @@ console.log(`isLinux: ${LINUX}`);
             ) {
                 continue;
             }
-            if (!this.compareUnityVersion(unityPackage.unitySortNumber)) {
+            if (!compareUnityVersion(unityPackage.unitySortNumber)) {
                 continue;
             }
 
@@ -10117,8 +8908,8 @@ console.log(`isLinux: ${LINUX}`);
                 continue;
             }
             var assetUrl = unityPackage.assetUrl;
-            var fileId = $utils.extractFileId(assetUrl);
-            var fileVersion = parseInt($utils.extractFileVersion(assetUrl), 10);
+            var fileId = extractFileId(assetUrl);
+            var fileVersion = parseInt(extractFileVersion(assetUrl), 10);
             if (!fileId) {
                 continue;
             }
@@ -10198,7 +8989,7 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.methods.showWorldDialog = function (tag, shortName) {
         const D = this.worldDialog;
-        const L = $utils.parseLocation(tag);
+        const L = parseLocation(tag);
         if (L.worldId === '') {
             return;
         }
@@ -10225,7 +9016,7 @@ console.log(`isLinux: ${LINUX}`);
         D.isIos = false;
         D.hasPersistData = false;
         D.memo = '';
-        var LL = $utils.parseLocation(this.lastLocation.location);
+        var LL = parseLocation(this.lastLocation.location);
         var currentWorldMatch = false;
         if (LL.worldId === D.id) {
             currentWorldMatch = true;
@@ -10273,7 +9064,7 @@ console.log(`isLinux: ${LINUX}`);
                             D.id
                         );
                     }
-                    var { isPC, isQuest, isIos } = this.getAvailablePlatforms(
+                    var { isPC, isQuest, isIos } = getAvailablePlatforms(
                         args.ref.unityPackages
                     );
                     D.avatarScalingDisabled = args.ref?.tags.includes(
@@ -10421,7 +9212,7 @@ console.log(`isLinux: ${LINUX}`);
         for (var instance of Object.values(instances)) {
             // due to references on callback of API.getUser()
             // this should be block scope variable
-            const L = $utils.parseLocation(`${D.id}:${instance.id}`);
+            const L = parseLocation(`${D.id}:${instance.id}`);
             instance.location = L.tag;
             if (!L.shortName) {
                 L.shortName = instance.shortName;
@@ -10606,7 +9397,7 @@ console.log(`isLinux: ${LINUX}`);
         for (var instance of Object.values(instances)) {
             // due to references on callback of API.getUser()
             // this should be block scope variable
-            const L = $utils.parseLocation(instance.tag);
+            const L = parseLocation(instance.tag);
             instance.location = instance.tag;
             instance.$location = L;
             if (instance.friendCount === 0) {
@@ -10624,7 +9415,7 @@ console.log(`isLinux: ${LINUX}`);
             var ref = API.cachedInstances.get(room.tag);
             if (typeof ref !== 'undefined') {
                 room.ref = ref;
-            } else if ($utils.isRealInstance(room.tag)) {
+            } else if (isRealInstance(room.tag)) {
                 instanceRequest.getInstance({
                     worldId: room.$location.worldId,
                     instanceId: room.$location.instanceId
@@ -10694,7 +9485,7 @@ console.log(`isLinux: ${LINUX}`);
                 return;
             }
             // self invite
-            var L = $utils.parseLocation(location);
+            var L = parseLocation(location);
             if (!L.isRealInstance) {
                 return;
             }
@@ -10730,21 +9521,14 @@ console.log(`isLinux: ${LINUX}`);
         isPC: false,
         isQuest: false,
         isIos: false,
-        treeData: [],
         bundleSizes: [],
         platformInfo: {},
-        timeSpent: 0,
         lastUpdated: '',
         inCache: false,
         cacheSize: 0,
         cacheLocked: false,
-        cachePath: '',
-        fileAnalysis: {}
+        cachePath: ''
     };
-
-    API.$on('LOGOUT', function () {
-        $app.avatarDialog.visible = false;
-    });
 
     API.$on('FAVORITE', function (args) {
         var { ref } = args;
@@ -10764,13 +9548,10 @@ console.log(`isLinux: ${LINUX}`);
     });
 
     $app.methods.showAvatarDialog = function (avatarId) {
-        this.$nextTick(() => $app.adjustDialogZ(this.$refs.avatarDialog.$el));
         var D = this.avatarDialog;
         D.visible = true;
         D.loading = true;
         D.id = avatarId;
-        D.fileAnalysis = {};
-        D.treeData = [];
         D.inCache = false;
         D.cacheSize = 0;
         D.cacheLocked = false;
@@ -10784,13 +9565,11 @@ console.log(`isLinux: ${LINUX}`);
         D.lastUpdated = '';
         D.bundleSizes = [];
         D.platformInfo = {};
-        D.timeSpent = 0;
         D.isFavorite =
             API.cachedFavoritesByObjectId.has(avatarId) ||
             (API.currentUser.$isVRCPlus &&
                 this.localAvatarFavoritesList.includes(avatarId));
         D.isBlocked = API.cachedAvatarModerations.has(avatarId);
-        D.memo = '';
         var ref2 = API.cachedAvatars.get(avatarId);
         if (typeof ref2 !== 'undefined') {
             D.ref = ref2;
@@ -10803,40 +9582,22 @@ console.log(`isLinux: ${LINUX}`);
                 return;
             }
         }
-        database.getAvatarTimeSpent(avatarId).then((aviTime) => {
-            if (D.id === aviTime.avatarId) {
-                D.timeSpent = aviTime.timeSpent;
-                if (
-                    D.id === API.currentUser.currentAvatar &&
-                    API.currentUser.$previousAvatarSwapTime
-                ) {
-                    D.timeSpent +=
-                        Date.now() - API.currentUser.$previousAvatarSwapTime;
-                }
-            }
-        });
         avatarRequest
             .getAvatar({ avatarId })
             .then((args) => {
                 var { ref } = args;
                 D.ref = ref;
                 this.updateVRChatAvatarCache();
-                if (
-                    ref.imageUrl === API.currentUser.currentAvatarImageUrl &&
-                    !ref.assetUrl
-                ) {
-                    D.ref.assetUrl = API.currentUser.currentAvatarAssetUrl;
-                }
                 if (/quest/.test(ref.tags)) {
                     D.isQuestFallback = true;
                 }
-                var { isPC, isQuest, isIos } = this.getAvailablePlatforms(
+                var { isPC, isQuest, isIos } = getAvailablePlatforms(
                     args.ref.unityPackages
                 );
                 D.isPC = isPC;
                 D.isQuest = isQuest;
                 D.isIos = isIos;
-                D.platformInfo = this.getPlatformInfo(args.ref.unityPackages);
+                D.platformInfo = getPlatformInfo(args.ref.unityPackages);
                 for (let i = ref.unityPackages.length - 1; i > -1; i--) {
                     var unityPackage = ref.unityPackages[i];
                     if (unityPackage.variant === 'impostor') {
@@ -10852,31 +9613,11 @@ console.log(`isLinux: ${LINUX}`);
                 }
             })
             .catch((err) => {
-                D.loading = false;
                 D.visible = false;
                 throw err;
             })
             .finally(() => {
-                D.loading = false;
-            });
-        this.getAvatarMemo(avatarId).then((memo) => {
-            if (D.id === memo.avatarId) {
-                D.memo = memo.memo;
-            }
-        });
-    };
-
-    $app.methods.selectAvatar = function (id) {
-        avatarRequest
-            .selectAvatar({
-                avatarId: id
-            })
-            .then((args) => {
-                this.$message({
-                    message: 'Avatar changed',
-                    type: 'success'
-                });
-                return args;
+                this.$nextTick(() => (D.loading = false));
             });
     };
 
@@ -10915,196 +9656,10 @@ console.log(`isLinux: ${LINUX}`);
             });
     };
 
-    $app.methods.avatarDialogCommand = function (command) {
-        var D = this.avatarDialog;
-        if (D.visible === false) {
-            return;
-        }
-        switch (command) {
-            case 'Refresh':
-                this.showAvatarDialog(D.id);
-                break;
-            case 'Share':
-                this.copyAvatarUrl(D.id);
-                break;
-            case 'Rename':
-                this.promptRenameAvatar(D);
-                break;
-            case 'Change Image':
-                this.displayPreviousImages('Avatar', 'Change');
-                break;
-            case 'Previous Images':
-                this.displayPreviousImages('Avatar', 'Display');
-                break;
-            case 'Change Description':
-                this.promptChangeAvatarDescription(D);
-                break;
-            case 'Change Content Tags':
-                this.showSetAvatarTagsDialog(D.id);
-                break;
-            case 'Download Unity Package':
-                $utils.openExternalLink(
-                    this.replaceVrcPackageUrl(
-                        this.avatarDialog.ref.unityPackageUrl
-                    )
-                );
-                break;
-            case 'Add Favorite':
-                this.showFavoriteDialog('avatar', D.id);
-                break;
-            default:
-                this.$confirm(`Continue? ${command}`, 'Confirm', {
-                    confirmButtonText: 'Confirm',
-                    cancelButtonText: 'Cancel',
-                    type: 'info',
-                    callback: (action) => {
-                        if (action !== 'confirm') {
-                            return;
-                        }
-                        switch (command) {
-                            case 'Delete Favorite':
-                                favoriteRequest.deleteFavorite({
-                                    objectId: D.id
-                                });
-                                break;
-                            case 'Select Fallback Avatar':
-                                avatarRequest
-                                    .selectFallbackAvatar({
-                                        avatarId: D.id
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message: 'Fallback avatar changed',
-                                            type: 'success'
-                                        });
-                                        return args;
-                                    });
-                                break;
-                            case 'Block Avatar':
-                                avatarModerationRequest
-                                    .sendAvatarModeration({
-                                        avatarModerationType: 'block',
-                                        targetAvatarId: D.id
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message: 'Avatar blocked',
-                                            type: 'success'
-                                        });
-                                        return args;
-                                    });
-                                break;
-                            case 'Unblock Avatar':
-                                avatarModerationRequest.deleteAvatarModeration({
-                                    avatarModerationType: 'block',
-                                    targetAvatarId: D.id
-                                });
-                                break;
-                            case 'Make Public':
-                                avatarRequest
-                                    .saveAvatar({
-                                        id: D.id,
-                                        releaseStatus: 'public'
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message: 'Avatar updated to public',
-                                            type: 'success'
-                                        });
-                                        return args;
-                                    });
-                                break;
-                            case 'Make Private':
-                                avatarRequest
-                                    .saveAvatar({
-                                        id: D.id,
-                                        releaseStatus: 'private'
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message:
-                                                'Avatar updated to private',
-                                            type: 'success'
-                                        });
-                                        return args;
-                                    });
-                                break;
-                            case 'Delete':
-                                avatarRequest
-                                    .deleteAvatar({
-                                        avatarId: D.id
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message: 'Avatar deleted',
-                                            type: 'success'
-                                        });
-                                        D.visible = false;
-                                        return args;
-                                    });
-                                break;
-                            case 'Delete Imposter':
-                                avatarRequest
-                                    .deleteImposter({
-                                        avatarId: D.id
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message: 'Imposter deleted',
-                                            type: 'success'
-                                        });
-                                        this.showAvatarDialog(D.id);
-                                        return args;
-                                    });
-                                break;
-                            case 'Create Imposter':
-                                avatarRequest
-                                    .createImposter({
-                                        avatarId: D.id
-                                    })
-                                    .then((args) => {
-                                        this.$message({
-                                            message:
-                                                'Imposter queued for creation',
-                                            type: 'success'
-                                        });
-                                        return args;
-                                    });
-                                break;
-                            case 'Regenerate Imposter':
-                                avatarRequest
-                                    .deleteImposter({
-                                        avatarId: D.id
-                                    })
-                                    .then((args) => {
-                                        return args;
-                                    })
-                                    .finally(() => {
-                                        avatarRequest
-                                            .createImposter({
-                                                avatarId: D.id
-                                            })
-                                            .then((args) => {
-                                                this.$message({
-                                                    message:
-                                                        'Imposter deleted and queued for creation',
-                                                    type: 'success'
-                                                });
-                                                return args;
-                                            });
-                                    });
-                                break;
-                        }
-                    }
-                });
-                break;
-        }
-    };
-
     $app.methods.checkAvatarCache = function (fileId) {
         var avatarId = '';
         for (var ref of API.cachedAvatars.values()) {
-            if ($utils.extractFileId(ref.imageUrl) === fileId) {
+            if (extractFileId(ref.imageUrl) === fileId) {
                 avatarId = ref.id;
             }
         }
@@ -11127,7 +9682,7 @@ console.log(`isLinux: ${LINUX}`);
         ownerUserId,
         currentAvatarImageUrl
     ) {
-        var fileId = $utils.extractFileId(currentAvatarImageUrl);
+        var fileId = extractFileId(currentAvatarImageUrl);
         if (!fileId) {
             this.$message({
                 message: 'Sorry, the author is unknown',
@@ -11170,37 +9725,6 @@ console.log(`isLinux: ${LINUX}`);
                 this.showAvatarDialog(avatarId);
             }
         }
-    };
-
-    $app.methods.refreshAvatarDialogTreeData = function () {
-        var D = this.avatarDialog;
-        D.treeData = $utils.buildTreeData(D.ref);
-    };
-
-    $app.computed.avatarDialogPlatform = function () {
-        var { ref } = this.avatarDialog;
-        var platforms = [];
-        if (ref.unityPackages) {
-            for (var unityPackage of ref.unityPackages) {
-                if (
-                    unityPackage.variant &&
-                    unityPackage.variant !== 'standard' &&
-                    unityPackage.variant !== 'security'
-                ) {
-                    continue;
-                }
-                var platform = 'PC';
-                if (unityPackage.platform === 'standalonewindows') {
-                    platform = 'PC';
-                } else if (unityPackage.platform === 'android') {
-                    platform = 'Android';
-                } else if (unityPackage.platform) {
-                    ({ platform } = unityPackage);
-                }
-                platforms.push(`${platform}/${unityPackage.unityVersion}`);
-            }
-        }
-        return platforms.join(', ');
     };
 
     // #endregion
@@ -11258,277 +9782,6 @@ console.log(`isLinux: ${LINUX}`);
     API.$on('FAVORITE:DELETE', function (args) {
         $app.updateFavoriteDialog(args.params.objectId);
     });
-
-    // #endregion
-    // #region | App: Invite Dialog
-
-    $app.data.inviteDialog = {
-        visible: false,
-        loading: false,
-        worldId: '',
-        worldName: '',
-        userIds: [],
-        friendsInInstance: []
-    };
-
-    API.$on('LOGOUT', function () {
-        $app.inviteDialog.visible = false;
-    });
-
-    $app.methods.addFriendsInInstanceToInvite = function () {
-        var D = this.inviteDialog;
-        for (var friend of D.friendsInInstance) {
-            if (!D.userIds.includes(friend.id)) {
-                D.userIds.push(friend.id);
-            }
-        }
-    };
-
-    $app.methods.addFavoriteFriendsToInvite = function () {
-        var D = this.inviteDialog;
-        for (var friend of this.vipFriends) {
-            if (!D.userIds.includes(friend.id)) {
-                D.userIds.push(friend.id);
-            }
-        }
-    };
-
-    $app.methods.addSelfToInvite = function () {
-        var D = this.inviteDialog;
-        if (!D.userIds.includes(API.currentUser.id)) {
-            D.userIds.push(API.currentUser.id);
-        }
-    };
-
-    $app.methods.sendInvite = function () {
-        this.$confirm('Continue? Invite', 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                var D = this.inviteDialog;
-                if (action !== 'confirm' || D.loading === true) {
-                    return;
-                }
-                D.loading = true;
-                var inviteLoop = () => {
-                    if (D.userIds.length > 0) {
-                        var receiverUserId = D.userIds.shift();
-                        if (receiverUserId === API.currentUser.id) {
-                            // can't invite self!?
-                            var L = $utils.parseLocation(D.worldId);
-                            instanceRequest
-                                .selfInvite({
-                                    instanceId: L.instanceId,
-                                    worldId: L.worldId
-                                })
-                                .finally(inviteLoop);
-                        } else {
-                            notificationRequest
-                                .sendInvite(
-                                    {
-                                        instanceId: D.worldId,
-                                        worldId: D.worldId,
-                                        worldName: D.worldName
-                                    },
-                                    receiverUserId
-                                )
-                                .finally(inviteLoop);
-                        }
-                    } else {
-                        D.loading = false;
-                        D.visible = false;
-                        this.$message({
-                            message: 'Invite sent',
-                            type: 'success'
-                        });
-                    }
-                };
-                inviteLoop();
-            }
-        });
-    };
-
-    $app.methods.showInviteDialog = function (tag) {
-        if (!$utils.isRealInstance(tag)) {
-            return;
-        }
-        this.$nextTick(() => $app.adjustDialogZ(this.$refs.inviteDialog.$el));
-        var L = $utils.parseLocation(tag);
-        worldRequest
-            .getCachedWorld({
-                worldId: L.worldId
-            })
-            .then((args) => {
-                var D = this.inviteDialog;
-                D.userIds = [];
-                D.worldId = L.tag;
-                D.worldName = args.ref.name;
-                D.friendsInInstance = [];
-                var friendsInCurrentInstance = this.lastLocation.friendList;
-                for (var friend of friendsInCurrentInstance.values()) {
-                    var ctx = this.friends.get(friend.userId);
-                    if (typeof ctx.ref === 'undefined') {
-                        continue;
-                    }
-                    D.friendsInInstance.push(ctx);
-                }
-                D.visible = true;
-            });
-    };
-
-    // #endregion
-    // #region | App: Social Status Dialog
-
-    $app.data.socialStatusDialog = {
-        visible: false,
-        loading: false,
-        status: '',
-        statusDescription: ''
-    };
-
-    API.$on('LOGOUT', function () {
-        $app.socialStatusDialog.visible = false;
-    });
-
-    $app.methods.saveSocialStatus = function () {
-        var D = this.socialStatusDialog;
-        if (D.loading) {
-            return;
-        }
-        D.loading = true;
-        API.saveCurrentUser({
-            status: D.status,
-            statusDescription: D.statusDescription
-        })
-            .finally(() => {
-                D.loading = false;
-            })
-            .then((args) => {
-                D.visible = false;
-                this.$message({
-                    message: 'Status updated',
-                    type: 'success'
-                });
-                return args;
-            });
-    };
-
-    $app.methods.showSocialStatusDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.socialStatusDialog.$el)
-        );
-        var D = this.socialStatusDialog;
-        var { statusHistory } = API.currentUser;
-        var statusHistoryArray = [];
-        for (var i = 0; i < statusHistory.length; ++i) {
-            var addStatus = {
-                no: i + 1,
-                status: statusHistory[i]
-            };
-            statusHistoryArray.push(addStatus);
-        }
-        this.socialStatusHistoryTable.data = statusHistoryArray;
-        D.status = API.currentUser.status;
-        D.statusDescription = API.currentUser.statusDescription;
-        D.visible = true;
-    };
-
-    $app.methods.setSocialStatusFromHistory = function (val) {
-        if (val === null) {
-            return;
-        }
-        var D = this.socialStatusDialog;
-        D.statusDescription = val.status;
-    };
-
-    // #endregion
-
-    // #region | App: Bio Dialog
-
-    $app.data.bioDialog = {
-        visible: false,
-        loading: false,
-        bio: '',
-        bioLinks: []
-    };
-
-    API.$on('LOGOUT', function () {
-        $app.bioDialog.visible = false;
-    });
-
-    $app.methods.saveBio = function () {
-        var D = this.bioDialog;
-        if (D.loading) {
-            return;
-        }
-        D.loading = true;
-        API.saveCurrentUser({
-            bio: D.bio,
-            bioLinks: D.bioLinks
-        })
-            .finally(() => {
-                D.loading = false;
-            })
-            .then((args) => {
-                D.visible = false;
-                this.$message({
-                    message: 'Bio updated',
-                    type: 'success'
-                });
-                return args;
-            });
-    };
-
-    $app.methods.showBioDialog = function () {
-        this.$nextTick(() => $app.adjustDialogZ(this.$refs.bioDialog.$el));
-        var D = this.bioDialog;
-        D.bio = API.currentUser.bio;
-        D.bioLinks = API.currentUser.bioLinks.slice();
-        D.visible = true;
-    };
-
-    // #endregion
-    // #region | App: Pronouns Dialog
-
-    $app.data.pronounsDialog = {
-        visible: false,
-        loading: false,
-        pronouns: ''
-    };
-
-    API.$on('LOGOUT', function () {
-        $app.pronounsDialog.visible = false;
-    });
-
-    $app.methods.savePronouns = function () {
-        var D = this.pronounsDialog;
-        if (D.loading) {
-            return;
-        }
-        D.loading = true;
-        API.saveCurrentUser({
-            pronouns: D.pronouns
-        })
-            .finally(() => {
-                D.loading = false;
-            })
-            .then((args) => {
-                D.visible = false;
-                this.$message({
-                    message: 'Pronouns updated',
-                    type: 'success'
-                });
-                return args;
-            });
-    };
-
-    $app.methods.showPronounsDialog = function () {
-        this.$nextTick(() => $app.adjustDialogZ(this.$refs.pronounsDialog.$el));
-        var D = this.pronounsDialog;
-        D.pronouns = API.currentUser.pronouns;
-        D.visible = true;
-    };
 
     // #endregion
     // #region | App: New Instance Dialog
@@ -11631,18 +9884,12 @@ console.log(`isLinux: ${LINUX}`);
             params.queueEnabled = D.queueEnabled;
             if (D.groupAccessType === 'members') {
                 params.roleIds = D.roleIds;
-                params.canRequestInvite = true;
-            } else if (D.groupAccessType === 'plus') {
-                params.canRequestInvite = true;
             }
         }
         if (
             D.ageGate &&
             type === 'group' &&
-            this.hasGroupPermission(
-                D.groupRef,
-                'group-instance-age-gated-create'
-            )
+            hasGroupPermission(D.groupRef, 'group-instance-age-gated-create')
         ) {
             params.ageGate = true;
         }
@@ -11664,15 +9911,17 @@ console.log(`isLinux: ${LINUX}`);
                 if (action !== 'confirm') {
                     return;
                 }
-                API.saveCurrentUser({
-                    homeLocation: tag
-                }).then((args) => {
-                    this.$message({
-                        message: 'Home world updated',
-                        type: 'success'
+                userRequest
+                    .saveCurrentUser({
+                        homeLocation: tag
+                    })
+                    .then((args) => {
+                        this.$message({
+                            message: 'Home world updated',
+                            type: 'success'
+                        });
+                        return args;
                     });
-                    return args;
-                });
             }
         });
     };
@@ -11680,354 +9929,32 @@ console.log(`isLinux: ${LINUX}`);
     // #endregion
     // #region | App: Launch Options Dialog
 
-    $app.data.launchOptionsDialog = {
-        visible: false,
-        launchArguments: await configRepository.getString('launchArguments'),
-        vrcLaunchPathOverride: await configRepository.getString(
-            'vrcLaunchPathOverride'
-        )
-    };
-
-    API.$on('LOGIN', async function () {
-        var D = $app.launchOptionsDialog;
-        if (
-            D.vrcLaunchPathOverride === null ||
-            D.vrcLaunchPathOverride === 'null'
-        ) {
-            D.vrcLaunchPathOverride = '';
-            await configRepository.setString(
-                'vrcLaunchPathOverride',
-                D.vrcLaunchPathOverride
-            );
-        }
-    });
-
-    API.$on('LOGOUT', function () {
-        $app.launchOptionsDialog.visible = false;
-    });
-
-    $app.methods.updateLaunchOptions = function () {
-        var D = this.launchOptionsDialog;
-        D.launchArguments = String(D.launchArguments)
-            .replace(/\s+/g, ' ')
-            .trim();
-        configRepository.setString('launchArguments', D.launchArguments);
-        if (
-            D.vrcLaunchPathOverride &&
-            D.vrcLaunchPathOverride.endsWith('.exe') &&
-            !D.vrcLaunchPathOverride.endsWith('launch.exe')
-        ) {
-            this.$message({
-                message:
-                    'Invalid path, you must enter VRChat folder or launch.exe',
-                type: 'error'
-            });
-            return;
-        }
-        configRepository.setString(
-            'vrcLaunchPathOverride',
-            D.vrcLaunchPathOverride
-        );
-        this.$message({
-            message: 'Updated launch options',
-            type: 'success'
-        });
-        D.visible = false;
-    };
+    $app.data.isLaunchOptionsDialogVisible = false;
 
     $app.methods.showLaunchOptions = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.launchOptionsDialog.$el)
-        );
-        var D = this.launchOptionsDialog;
-        D.visible = true;
-    };
-
-    // #endregion
-    // #region | App: Set Avatar Tags Dialog
-
-    $app.data.setAvatarTagsDialog = {
-        visible: false,
-        loading: false,
-        ownAvatars: [],
-        selectedCount: 0,
-        forceUpdate: 0,
-        selectedTags: [],
-        selectedTagsCsv: '',
-        contentHorror: false,
-        contentGore: false,
-        contentViolence: false,
-        contentAdult: false,
-        contentSex: false
-    };
-
-    $app.methods.showSetAvatarTagsDialog = function (avatarId) {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.setAvatarTagsDialog.$el)
-        );
-        var D = this.setAvatarTagsDialog;
-        D.visible = true;
-        D.loading = false;
-        D.ownAvatars = [];
-        D.forceUpdate = 0;
-        D.selectedTags = [];
-        D.selectedTagsCsv = '';
-        D.contentHorror = false;
-        D.contentGore = false;
-        D.contentViolence = false;
-        D.contentAdult = false;
-        D.contentSex = false;
-        var oldTags = this.avatarDialog.ref.tags;
-        oldTags.forEach((tag) => {
-            switch (tag) {
-                case 'content_horror':
-                    D.contentHorror = true;
-                    break;
-                case 'content_gore':
-                    D.contentGore = true;
-                    break;
-                case 'content_violence':
-                    D.contentViolence = true;
-                    break;
-                case 'content_adult':
-                    D.contentAdult = true;
-                    break;
-                case 'content_sex':
-                    D.contentSex = true;
-                    break;
-                default:
-                    if (tag.startsWith('content_')) {
-                        D.selectedTags.push(tag.substring(8));
-                    }
-                    break;
-            }
-        });
-        for (var ref of API.cachedAvatars.values()) {
-            if (ref.authorId === API.currentUser.id) {
-                ref.$selected = false;
-                ref.$tagString = '';
-                if (avatarId === ref.id) {
-                    ref.$selected = true;
-                    var conentTags = [];
-                    ref.tags.forEach((tag) => {
-                        if (tag.startsWith('content_')) {
-                            conentTags.push(tag.substring(8));
-                        }
-                    });
-                    for (var i = 0; i < conentTags.length; ++i) {
-                        var tag = conentTags[i];
-                        if (i < conentTags.length - 1) {
-                            ref.$tagString += `${tag}, `;
-                        } else {
-                            ref.$tagString += tag;
-                        }
-                    }
-                }
-                D.ownAvatars.push(ref);
-            }
-        }
-        this.updateAvatarTagsSelection();
-        this.updateSelectedAvatarTags();
-    };
-
-    $app.methods.updateSelectedAvatarTags = function () {
-        var D = this.setAvatarTagsDialog;
-        if (D.contentHorror) {
-            if (!D.selectedTags.includes('content_horror')) {
-                D.selectedTags.push('content_horror');
-            }
-        } else if (D.selectedTags.includes('content_horror')) {
-            D.selectedTags.splice(D.selectedTags.indexOf('content_horror'), 1);
-        }
-        if (D.contentGore) {
-            if (!D.selectedTags.includes('content_gore')) {
-                D.selectedTags.push('content_gore');
-            }
-        } else if (D.selectedTags.includes('content_gore')) {
-            D.selectedTags.splice(D.selectedTags.indexOf('content_gore'), 1);
-        }
-        if (D.contentViolence) {
-            if (!D.selectedTags.includes('content_violence')) {
-                D.selectedTags.push('content_violence');
-            }
-        } else if (D.selectedTags.includes('content_violence')) {
-            D.selectedTags.splice(
-                D.selectedTags.indexOf('content_violence'),
-                1
-            );
-        }
-        if (D.contentAdult) {
-            if (!D.selectedTags.includes('content_adult')) {
-                D.selectedTags.push('content_adult');
-            }
-        } else if (D.selectedTags.includes('content_adult')) {
-            D.selectedTags.splice(D.selectedTags.indexOf('content_adult'), 1);
-        }
-        if (D.contentSex) {
-            if (!D.selectedTags.includes('content_sex')) {
-                D.selectedTags.push('content_sex');
-            }
-        } else if (D.selectedTags.includes('content_sex')) {
-            D.selectedTags.splice(D.selectedTags.indexOf('content_sex'), 1);
-        }
-
-        D.selectedTagsCsv = D.selectedTags.join(',').replace(/content_/g, '');
-    };
-
-    $app.methods.updateInputAvatarTags = function () {
-        var D = this.setAvatarTagsDialog;
-        D.contentHorror = false;
-        D.contentGore = false;
-        D.contentViolence = false;
-        D.contentAdult = false;
-        D.contentSex = false;
-        var tags = D.selectedTagsCsv.split(',');
-        D.selectedTags = [];
-        for (var tag of tags) {
-            switch (tag) {
-                case 'horror':
-                    D.contentHorror = true;
-                    break;
-                case 'gore':
-                    D.contentGore = true;
-                    break;
-                case 'violence':
-                    D.contentViolence = true;
-                    break;
-                case 'adult':
-                    D.contentAdult = true;
-                    break;
-                case 'sex':
-                    D.contentSex = true;
-                    break;
-            }
-            if (!D.selectedTags.includes(`content_${tag}`)) {
-                D.selectedTags.push(`content_${tag}`);
-            }
-        }
-    };
-
-    $app.data.avatarContentTags = [
-        'content_horror',
-        'content_gore',
-        'content_violence',
-        'content_adult',
-        'content_sex'
-    ];
-
-    $app.methods.saveSetAvatarTagsDialog = async function () {
-        var D = this.setAvatarTagsDialog;
-        if (D.loading) {
-            return;
-        }
-        D.loading = true;
-        try {
-            for (var i = D.ownAvatars.length - 1; i >= 0; --i) {
-                var ref = D.ownAvatars[i];
-                if (!D.visible) {
-                    break;
-                }
-                if (!ref.$selected) {
-                    continue;
-                }
-                var tags = [...D.selectedTags];
-                for (var tag of ref.tags) {
-                    if (!tag.startsWith('content_')) {
-                        tags.push(tag);
-                    }
-                }
-                await avatarRequest.saveAvatar({
-                    id: ref.id,
-                    tags
-                });
-                D.selectedCount--;
-            }
-        } catch (err) {
-            this.$message({
-                message: 'Error saving avatar tags',
-                type: 'error'
-            });
-        } finally {
-            D.loading = false;
-            D.visible = false;
-        }
-    };
-
-    $app.methods.updateAvatarTagsSelection = function () {
-        var D = this.setAvatarTagsDialog;
-        D.selectedCount = 0;
-        for (var ref of D.ownAvatars) {
-            if (ref.$selected) {
-                D.selectedCount++;
-            }
-            ref.$tagString = '';
-            var conentTags = [];
-            ref.tags.forEach((tag) => {
-                if (tag.startsWith('content_')) {
-                    conentTags.push(tag.substring(8));
-                }
-            });
-            for (var i = 0; i < conentTags.length; ++i) {
-                var tag = conentTags[i];
-                if (i < conentTags.length - 1) {
-                    ref.$tagString += `${tag}, `;
-                } else {
-                    ref.$tagString += tag;
-                }
-            }
-        }
-        this.setAvatarTagsDialog.forceUpdate++;
-    };
-
-    $app.methods.setAvatarTagsSelectToggle = function () {
-        var D = this.setAvatarTagsDialog;
-        var allSelected = D.ownAvatars.length === D.selectedCount;
-        for (var ref of D.ownAvatars) {
-            ref.$selected = !allSelected;
-        }
-        this.updateAvatarTagsSelection();
+        this.isLaunchOptionsDialogVisible = true;
     };
 
     // #endregion
     // #region | App: Notification position
 
-    $app.data.notificationPositionDialog = {
-        visible: false
-    };
+    $app.data.isNotificationPositionDialogVisible = false;
 
     $app.methods.showNotificationPositionDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.notificationPositionDialog.$el)
-        );
-        this.notificationPositionDialog.visible = true;
+        this.isNotificationPositionDialogVisible = true;
     };
 
     // #endregion
     // #region | App: Noty feed filters
-
-    $app.data.notyFeedFiltersDialog = {
-        visible: false
-    };
-
-    $app.methods.showNotyFeedFiltersDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.notyFeedFiltersDialog.$el)
-        );
-        this.notyFeedFiltersDialog.visible = true;
-    };
-
-    // #endregion
     // #region | App: Wrist feed filters
 
-    $app.data.wristFeedFiltersDialog = {
-        visible: false
-    };
+    $app.data.feedFiltersDialogMode = '';
 
+    $app.methods.showNotyFeedFiltersDialog = function () {
+        this.feedFiltersDialogMode = 'noty';
+    };
     $app.methods.showWristFeedFiltersDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.wristFeedFiltersDialog.$el)
-        );
-        this.wristFeedFiltersDialog.visible = true;
+        this.feedFiltersDialogMode = 'wrist';
     };
 
     // #endregion
@@ -12056,7 +9983,7 @@ console.log(`isLinux: ${LINUX}`);
         shortName,
         desktopMode
     ) {
-        var L = $utils.parseLocation(location);
+        var L = parseLocation(location);
         var args = [];
         if (
             shortName &&
@@ -12156,78 +10083,6 @@ console.log(`isLinux: ${LINUX}`);
         document.getElementById('copy_to_clipboard').remove();
     };
 
-    $app.methods.copyAvatarId = function (avatarId) {
-        this.$message({
-            message: 'Avatar ID copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(avatarId);
-    };
-
-    $app.methods.copyAvatarUrl = function (avatarId) {
-        this.$message({
-            message: 'Avatar URL copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(`https://vrchat.com/home/avatar/${avatarId}`);
-    };
-
-    $app.methods.copyUserId = function (userId) {
-        this.$message({
-            message: 'User ID copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(userId);
-    };
-
-    $app.methods.copyUserURL = function (userId) {
-        this.$message({
-            message: 'User URL copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(`https://vrchat.com/home/user/${userId}`);
-    };
-
-    $app.methods.copyUserDisplayName = function (displayName) {
-        this.$message({
-            message: 'User DisplayName copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(displayName);
-    };
-
-    $app.methods.copyGroupId = function (groupId) {
-        this.$message({
-            message: 'Group ID copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(groupId);
-    };
-
-    $app.methods.copyGroupUrl = function (groupUrl) {
-        this.$message({
-            message: 'Group URL copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(groupUrl);
-    };
-
-    $app.methods.copyImageUrl = function (imageUrl) {
-        this.$message({
-            message: 'ImageUrl copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(imageUrl);
-    };
-
-    $app.methods.copyText = function (text) {
-        this.$message({
-            message: 'Text copied to clipboard',
-            type: 'success'
-        });
-        this.copyToClipboard(text);
-    };
-
     $app.methods.copyLink = function (text) {
         this.$message({
             message: 'Link copied to clipboard',
@@ -12258,104 +10113,6 @@ console.log(`isLinux: ${LINUX}`);
             $app.galleryDialogIconsLoading = false;
         }
     });
-
-    $app.methods.setVRCPlusIcon = function (fileId) {
-        if (!API.currentUser.$isVRCPlus) {
-            this.$message({
-                message: 'VRCPlus required',
-                type: 'error'
-            });
-            return;
-        }
-        var userIcon = '';
-        if (fileId) {
-            userIcon = `${API.endpointDomain}/file/${fileId}/1`;
-        }
-        if (userIcon === API.currentUser.userIcon) {
-            return;
-        }
-        API.saveCurrentUser({
-            userIcon
-        }).then((args) => {
-            this.$message({
-                message: 'Icon changed',
-                type: 'success'
-            });
-            return args;
-        });
-    };
-
-    $app.methods.deleteVRCPlusIcon = function (fileId) {
-        vrcPlusIconRequest.deleteFile(fileId).then((args) => {
-            API.$emit('VRCPLUSICON:DELETE', args);
-            return args;
-        });
-    };
-
-    API.$on('VRCPLUSICON:DELETE', function (args) {
-        var array = $app.VRCPlusIconsTable;
-        var { length } = array;
-        for (var i = 0; i < length; ++i) {
-            if (args.fileId === array[i].id) {
-                array.splice(i, 1);
-                break;
-            }
-        }
-    });
-
-    $app.methods.compareCurrentVRCPlusIcon = function (userIcon) {
-        var currentUserIcon = $utils.extractFileId(API.currentUser.userIcon);
-        if (userIcon === currentUserIcon) {
-            return true;
-        }
-        return false;
-    };
-
-    $app.methods.onFileChangeVRCPlusIcon = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#VRCPlusIconUploadButton')) {
-                document.querySelector('#VRCPlusIconUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (!files.length) {
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        var r = new FileReader();
-        r.onload = function () {
-            var base64Body = btoa(r.result);
-            vrcPlusIconRequest.uploadVRCPlusIcon(base64Body).then((args) => {
-                $app.$message({
-                    message: $t('message.icon.uploaded'),
-                    type: 'success'
-                });
-                return args;
-            });
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
-
-    $app.methods.displayVRCPlusIconUpload = function () {
-        document.getElementById('VRCPlusIconUploadButton').click();
-    };
 
     API.$on('VRCPLUSICON:ADD', function (args) {
         if (Object.keys($app.VRCPlusIconsTable).length !== 0) {
@@ -12395,7 +10152,6 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.clearInviteImageUpload = function () {
-        this.clearImageGallerySelect();
         var buttonList = document.querySelectorAll('.inviteImageUploadButton');
         buttonList.forEach((button) => (button.value = ''));
         this.uploadImage = '';
@@ -12410,17 +10166,6 @@ console.log(`isLinux: ${LINUX}`);
             return $utils.timeToText(Date.now() - ctx.ref.$offline_for);
         }
         return '-';
-    };
-
-    $app.methods.userOnlineForTimestamp = function (ctx) {
-        if (ctx.ref.state === 'online' && ctx.ref.$online_for) {
-            return ctx.ref.$online_for;
-        } else if (ctx.ref.state === 'active' && ctx.ref.$active_for) {
-            return ctx.ref.$active_for;
-        } else if (ctx.ref.$offline_for) {
-            return ctx.ref.$offline_for;
-        }
-        return 0;
     };
 
     // #endregion
@@ -12440,10 +10185,6 @@ console.log(`isLinux: ${LINUX}`);
     // temp, invites.pug
     API.refreshInviteMessageTableData =
         inviteMessagesRequest.refreshInviteMessageTableData;
-
-    $app.methods.refreshInviteMessageTable = function (messageType) {
-        inviteMessagesRequest.refreshInviteMessageTableData(messageType);
-    };
 
     API.$on('INVITE:MESSAGE', function (args) {
         $app.inviteMessageTable.data = args.json;
@@ -12475,646 +10216,11 @@ console.log(`isLinux: ${LINUX}`);
         messageType,
         inviteMessage
     ) {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.editInviteMessageDialog.$el)
-        );
         var D = this.editInviteMessageDialog;
         D.newMessage = inviteMessage.message;
         D.visible = true;
         D.inviteMessage = inviteMessage;
         D.messageType = messageType;
-    };
-
-    $app.methods.saveEditInviteMessage = function () {
-        var D = this.editInviteMessageDialog;
-        D.visible = false;
-        if (D.inviteMessage.message !== D.newMessage) {
-            var slot = D.inviteMessage.slot;
-            var messageType = D.messageType;
-            var params = {
-                message: D.newMessage
-            };
-            inviteMessagesRequest
-                .editInviteMessage(params, messageType, slot)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    API.$emit(`INVITE:${messageType.toUpperCase()}`, args);
-                    if (args.json[slot].message === D.inviteMessage.message) {
-                        this.$message({
-                            message:
-                                "VRChat API didn't update message, try again",
-                            type: 'error'
-                        });
-                        throw new Error(
-                            "VRChat API didn't update message, try again"
-                        );
-                    } else {
-                        this.$message('Invite message updated');
-                    }
-                    return args;
-                });
-        }
-    };
-
-    $app.methods.cancelEditInviteMessage = function () {
-        this.editInviteMessageDialog.visible = false;
-    };
-
-    // #endregion
-    // #region | App: Edit and Send Invite Response Message Dialog
-
-    $app.data.editAndSendInviteResponseDialog = {
-        visible: false,
-        inviteMessage: {},
-        messageType: '',
-        newMessage: ''
-    };
-
-    $app.methods.showEditAndSendInviteResponseDialog = function (
-        messageType,
-        inviteMessage
-    ) {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.editAndSendInviteResponseDialog.$el)
-        );
-        this.editAndSendInviteResponseDialog = {
-            newMessage: inviteMessage.message,
-            visible: true,
-            messageType,
-            inviteMessage
-        };
-    };
-
-    $app.methods.saveEditAndSendInviteResponse = async function () {
-        var D = this.editAndSendInviteResponseDialog;
-        D.visible = false;
-        var messageType = D.messageType;
-        var slot = D.inviteMessage.slot;
-        if (D.inviteMessage.message !== D.newMessage) {
-            var params = {
-                message: D.newMessage
-            };
-            await inviteMessagesRequest
-                .editInviteMessage(params, messageType, slot)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    API.$emit(`INVITE:${messageType.toUpperCase()}`, args);
-                    if (args.json[slot].message === D.inviteMessage.message) {
-                        this.$message({
-                            message:
-                                "VRChat API didn't update message, try again",
-                            type: 'error'
-                        });
-                        throw new Error(
-                            "VRChat API didn't update message, try again"
-                        );
-                    } else {
-                        this.$message('Invite message updated');
-                    }
-                    return args;
-                });
-        }
-        var I = this.sendInviteResponseDialog;
-        var params = {
-            responseSlot: slot,
-            rsvp: true
-        };
-        if ($app.uploadImage) {
-            notificationRequest
-                .sendInviteResponsePhoto(params, I.invite.id)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    notificationRequest.hideNotification({
-                        notificationId: I.invite.id
-                    });
-                    this.$message({
-                        message: 'Invite response message sent',
-                        type: 'success'
-                    });
-                    this.sendInviteResponseDialogVisible = false;
-                    this.sendInviteRequestResponseDialogVisible = false;
-                    return args;
-                });
-        } else {
-            notificationRequest
-                .sendInviteResponse(params, I.invite.id)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    notificationRequest.hideNotification({
-                        notificationId: I.invite.id
-                    });
-                    this.$message({
-                        message: 'Invite response message sent',
-                        type: 'success'
-                    });
-                    this.sendInviteResponseDialogVisible = false;
-                    this.sendInviteRequestResponseDialogVisible = false;
-                    return args;
-                });
-        }
-    };
-
-    $app.methods.cancelEditAndSendInviteResponse = function () {
-        this.editAndSendInviteResponseDialog.visible = false;
-    };
-
-    $app.data.sendInviteResponseDialog = {
-        message: '',
-        messageSlot: 0,
-        invite: {}
-    };
-
-    $app.data.sendInviteResponseDialogVisible = false;
-
-    $app.data.sendInviteResponseConfirmDialog = {
-        visible: false
-    };
-
-    API.$on('LOGIN', function () {
-        $app.sendInviteResponseDialogVisible = false;
-        $app.sendInviteResponseConfirmDialog.visible = false;
-    });
-
-    $app.methods.showSendInviteResponseDialog = function (invite) {
-        this.sendInviteResponseDialog = {
-            invite
-        };
-        inviteMessagesRequest.refreshInviteMessageTableData('response');
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.sendInviteResponseDialog.$el)
-        );
-        this.clearInviteImageUpload();
-        this.sendInviteResponseDialogVisible = true;
-    };
-
-    $app.methods.showSendInviteResponseConfirmDialog = function (val) {
-        if (
-            this.editAndSendInviteResponseDialog.visible === true ||
-            val === null
-        ) {
-            return;
-        }
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.sendInviteResponseConfirmDialog.$el)
-        );
-        this.sendInviteResponseConfirmDialog.visible = true;
-        this.sendInviteResponseDialog.messageSlot = val.slot;
-    };
-
-    $app.methods.cancelSendInviteResponse = function () {
-        this.sendInviteResponseDialogVisible = false;
-    };
-
-    $app.methods.cancelInviteResponseConfirm = function () {
-        this.sendInviteResponseConfirmDialog.visible = false;
-    };
-
-    $app.methods.sendInviteResponseConfirm = function () {
-        var D = this.sendInviteResponseDialog;
-        var params = {
-            responseSlot: D.messageSlot,
-            rsvp: true
-        };
-        if ($app.uploadImage) {
-            notificationRequest
-                .sendInviteResponsePhoto(params, D.invite.id, D.messageType)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    notificationRequest.hideNotification({
-                        notificationId: D.invite.id
-                    });
-                    this.$message({
-                        message: 'Invite response photo message sent',
-                        type: 'success'
-                    });
-                    return args;
-                });
-        } else {
-            notificationRequest
-                .sendInviteResponse(params, D.invite.id, D.messageType)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    notificationRequest.hideNotification({
-                        notificationId: D.invite.id
-                    });
-                    this.$message({
-                        message: 'Invite response message sent',
-                        type: 'success'
-                    });
-                    return args;
-                });
-        }
-        this.sendInviteResponseDialogVisible = false;
-        this.sendInviteRequestResponseDialogVisible = false;
-        this.sendInviteResponseConfirmDialog.visible = false;
-    };
-
-    // #endregion
-    // #region | App: Invite Request Response Message Dialog
-
-    $app.data.sendInviteRequestResponseDialogVisible = false;
-
-    $app.methods.cancelSendInviteRequestResponse = function () {
-        this.sendInviteRequestResponseDialogVisible = false;
-    };
-
-    API.$on('LOGIN', function () {
-        $app.sendInviteRequestResponseDialogVisible = false;
-        $app.showSendInviteResponseConfirmDialog.visible = false;
-    });
-
-    $app.methods.showSendInviteRequestResponseDialog = function (invite) {
-        this.sendInviteResponseDialog = {
-            invite
-        };
-        inviteMessagesRequest.refreshInviteMessageTableData('requestResponse');
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.sendInviteRequestResponseDialog.$el)
-        );
-        this.clearInviteImageUpload();
-        this.sendInviteRequestResponseDialogVisible = true;
-    };
-
-    // #endregion
-    // #region | App: Invite Message Dialog
-
-    $app.data.editAndSendInviteDialog = {
-        visible: false,
-        messageType: '',
-        newMessage: '',
-        inviteMessage: {}
-    };
-
-    $app.methods.showEditAndSendInviteDialog = function (
-        messageType,
-        inviteMessage
-    ) {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.editAndSendInviteDialog.$el)
-        );
-        this.editAndSendInviteDialog = {
-            newMessage: inviteMessage.message,
-            visible: true,
-            messageType,
-            inviteMessage
-        };
-    };
-
-    $app.methods.saveEditAndSendInvite = async function () {
-        var D = this.editAndSendInviteDialog;
-        D.visible = false;
-        var messageType = D.messageType;
-        var slot = D.inviteMessage.slot;
-        if (D.inviteMessage.message !== D.newMessage) {
-            var params = {
-                message: D.newMessage
-            };
-            await inviteMessagesRequest
-                .editInviteMessage(params, messageType, slot)
-                .catch((err) => {
-                    throw err;
-                })
-                .then((args) => {
-                    API.$emit(`INVITE:${messageType.toUpperCase()}`, args);
-                    if (args.json[slot].message === D.inviteMessage.message) {
-                        this.$message({
-                            message:
-                                "VRChat API didn't update message, try again",
-                            type: 'error'
-                        });
-                        throw new Error(
-                            "VRChat API didn't update message, try again"
-                        );
-                    } else {
-                        this.$message('Invite message updated');
-                    }
-                    return args;
-                });
-        }
-        var I = this.sendInviteDialog;
-        var J = this.inviteDialog;
-        if (J.visible) {
-            var inviteLoop = () => {
-                if (J.userIds.length > 0) {
-                    var receiverUserId = J.userIds.shift();
-                    if (receiverUserId === API.currentUser.id) {
-                        // can't invite self!?
-                        var L = $utils.parseLocation(J.worldId);
-                        instanceRequest
-                            .selfInvite({
-                                instanceId: L.instanceId,
-                                worldId: L.worldId
-                            })
-                            .finally(inviteLoop);
-                    } else if ($app.uploadImage) {
-                        notificationRequest
-                            .sendInvitePhoto(
-                                {
-                                    instanceId: J.worldId,
-                                    worldId: J.worldId,
-                                    worldName: J.worldName,
-                                    messageSlot: slot
-                                },
-                                receiverUserId
-                            )
-                            .finally(inviteLoop);
-                    } else {
-                        notificationRequest
-                            .sendInvite(
-                                {
-                                    instanceId: J.worldId,
-                                    worldId: J.worldId,
-                                    worldName: J.worldName,
-                                    messageSlot: slot
-                                },
-                                receiverUserId
-                            )
-                            .finally(inviteLoop);
-                    }
-                } else {
-                    J.loading = false;
-                    J.visible = false;
-                    this.$message({
-                        message: 'Invite sent',
-                        type: 'success'
-                    });
-                }
-            };
-            inviteLoop();
-        } else if (I.messageType === 'invite') {
-            I.params.messageSlot = slot;
-            if ($app.uploadImage) {
-                notificationRequest
-                    .sendInvitePhoto(I.params, I.userId)
-                    .catch((err) => {
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Invite photo message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            } else {
-                notificationRequest
-                    .sendInvite(I.params, I.userId)
-                    .catch((err) => {
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Invite message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            }
-        } else if (I.messageType === 'requestInvite') {
-            I.params.requestSlot = slot;
-            if ($app.uploadImage) {
-                notificationRequest
-                    .sendRequestInvitePhoto(I.params, I.userId)
-                    .catch((err) => {
-                        this.clearInviteImageUpload();
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Request invite photo message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            } else {
-                notificationRequest
-                    .sendRequestInvite(I.params, I.userId)
-                    .catch((err) => {
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Request invite message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            }
-        }
-        this.sendInviteDialogVisible = false;
-        this.sendInviteRequestDialogVisible = false;
-    };
-
-    $app.methods.cancelEditAndSendInvite = function () {
-        this.editAndSendInviteDialog.visible = false;
-    };
-
-    $app.data.sendInviteDialog = {
-        message: '',
-        messageSlot: 0,
-        userId: '',
-        messageType: '',
-        params: {}
-    };
-
-    $app.data.sendInviteDialogVisible = false;
-
-    $app.data.sendInviteConfirmDialog = {
-        visible: false
-    };
-
-    API.$on('LOGIN', function () {
-        $app.sendInviteDialogVisible = false;
-        $app.sendInviteConfirmDialog.visible = false;
-    });
-
-    $app.methods.showSendInviteDialog = function (params, userId) {
-        this.sendInviteDialog = {
-            params,
-            userId,
-            messageType: 'invite'
-        };
-        inviteMessagesRequest.refreshInviteMessageTableData('message');
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.sendInviteDialog.$el)
-        );
-        this.clearInviteImageUpload();
-        this.sendInviteDialogVisible = true;
-    };
-
-    $app.methods.showSendInviteConfirmDialog = function (val) {
-        if (this.editAndSendInviteDialog.visible === true || val === null) {
-            return;
-        }
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.sendInviteConfirmDialog.$el)
-        );
-        this.sendInviteConfirmDialog.visible = true;
-        this.sendInviteDialog.messageSlot = val.slot;
-    };
-
-    $app.methods.cancelSendInvite = function () {
-        this.sendInviteDialogVisible = false;
-    };
-
-    $app.methods.cancelInviteConfirm = function () {
-        this.sendInviteConfirmDialog.visible = false;
-    };
-
-    $app.methods.sendInviteConfirm = function () {
-        var D = this.sendInviteDialog;
-        var J = this.inviteDialog;
-        if (J.visible) {
-            var inviteLoop = () => {
-                if (J.userIds.length > 0) {
-                    var receiverUserId = J.userIds.shift();
-                    if (receiverUserId === API.currentUser.id) {
-                        // can't invite self!?
-                        var L = $utils.parseLocation(J.worldId);
-                        instanceRequest
-                            .selfInvite({
-                                instanceId: L.instanceId,
-                                worldId: L.worldId
-                            })
-                            .finally(inviteLoop);
-                    } else if ($app.uploadImage) {
-                        notificationRequest
-                            .sendInvitePhoto(
-                                {
-                                    instanceId: J.worldId,
-                                    worldId: J.worldId,
-                                    worldName: J.worldName,
-                                    messageSlot: D.messageSlot
-                                },
-                                receiverUserId
-                            )
-                            .finally(inviteLoop);
-                    } else {
-                        notificationRequest
-                            .sendInvite(
-                                {
-                                    instanceId: J.worldId,
-                                    worldId: J.worldId,
-                                    worldName: J.worldName,
-                                    messageSlot: D.messageSlot
-                                },
-                                receiverUserId
-                            )
-                            .finally(inviteLoop);
-                    }
-                } else {
-                    J.loading = false;
-                    J.visible = false;
-                    this.$message({
-                        message: 'Invite message sent',
-                        type: 'success'
-                    });
-                }
-            };
-            inviteLoop();
-        } else if (D.messageType === 'invite') {
-            D.params.messageSlot = D.messageSlot;
-            if ($app.uploadImage) {
-                notificationRequest
-                    .sendInvitePhoto(D.params, D.userId)
-                    .catch((err) => {
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Invite photo message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            } else {
-                notificationRequest
-                    .sendInvite(D.params, D.userId)
-                    .catch((err) => {
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Invite message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            }
-        } else if (D.messageType === 'requestInvite') {
-            D.params.requestSlot = D.messageSlot;
-            if ($app.uploadImage) {
-                notificationRequest
-                    .sendRequestInvitePhoto(D.params, D.userId)
-                    .catch((err) => {
-                        this.clearInviteImageUpload();
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Request invite photo message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            } else {
-                notificationRequest
-                    .sendRequestInvite(D.params, D.userId)
-                    .catch((err) => {
-                        throw err;
-                    })
-                    .then((args) => {
-                        this.$message({
-                            message: 'Request invite message sent',
-                            type: 'success'
-                        });
-                        return args;
-                    });
-            }
-        }
-        this.sendInviteDialogVisible = false;
-        this.sendInviteRequestDialogVisible = false;
-        this.sendInviteConfirmDialog.visible = false;
-    };
-
-    // #endregion
-    // #region | App: Invite Request Message Dialog
-
-    $app.data.sendInviteRequestDialogVisible = false;
-
-    $app.methods.cancelSendInviteRequest = function () {
-        this.sendInviteRequestDialogVisible = false;
-    };
-
-    API.$on('LOGIN', function () {
-        $app.sendInviteRequestDialogVisible = false;
-        $app.showSendInviteConfirmDialog.visible = false;
-    });
-
-    $app.methods.showSendInviteRequestDialog = function (params, userId) {
-        this.sendInviteDialog = {
-            params,
-            userId,
-            messageType: 'requestInvite'
-        };
-        inviteMessagesRequest.refreshInviteMessageTableData('request');
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.sendInviteRequestDialog.$el)
-        );
-        this.clearInviteImageUpload();
-        this.sendInviteRequestDialogVisible = true;
     };
 
     // #endregion
@@ -13219,527 +10325,7 @@ console.log(`isLinux: ${LINUX}`);
         /* eslint-enable require-atomic-updates */
     };
 
-    $app.methods.genMd5 = async function (file) {
-        var response = await AppApi.MD5File(file);
-        return response;
-    };
-
-    $app.methods.resizeImageToFitLimits = async function (file) {
-        var response = await AppApi.ResizeImageToFitLimits(file);
-        return response;
-    };
-
-    $app.methods.genSig = async function (file) {
-        var response = await AppApi.SignFile(file);
-        return response;
-    };
-
-    $app.methods.genLength = async function (file) {
-        var response = await AppApi.FileLength(file);
-        return response;
-    };
-
-    // Upload avatar image
-
-    $app.methods.onFileChangeAvatarImage = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#AvatarImageUploadButton')) {
-                document.querySelector('#AvatarImageUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (
-            !files.length ||
-            !this.avatarDialog.visible ||
-            this.avatarDialog.loading
-        ) {
-            clearFile();
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        this.avatarDialog.loading = true;
-        this.changeAvatarImageDialogLoading = true;
-        var r = new FileReader();
-        r.onload = async function (file) {
-            var base64File = await $app.resizeImageToFitLimits(btoa(r.result));
-            // 10MB
-            var fileMd5 = await $app.genMd5(base64File);
-            var fileSizeInBytes = parseInt(file.total, 10);
-            var base64SignatureFile = await $app.genSig(base64File);
-            var signatureMd5 = await $app.genMd5(base64SignatureFile);
-            var signatureSizeInBytes = parseInt(
-                await $app.genLength(base64SignatureFile),
-                10
-            );
-            var avatarId = $app.avatarDialog.id;
-            var { imageUrl } = $app.avatarDialog.ref;
-            var fileId = $utils.extractFileId(imageUrl);
-            if (!fileId) {
-                $app.$message({
-                    message: $t('message.avatar.image_invalid'),
-                    type: 'error'
-                });
-                clearFile();
-                return;
-            }
-            $app.avatarImage = {
-                base64File,
-                fileMd5,
-                base64SignatureFile,
-                signatureMd5,
-                fileId,
-                avatarId
-            };
-            var params = {
-                fileMd5,
-                fileSizeInBytes,
-                signatureMd5,
-                signatureSizeInBytes
-            };
-            imageRequest.uploadAvatarImage(params, fileId);
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
-
-    API.$on('AVATARIMAGE:INIT', function (args) {
-        var fileId = args.json.id;
-        var fileVersion =
-            args.json.versions[args.json.versions.length - 1].version;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadAvatarImageFileStart(params);
-    });
-
-    API.$on('AVATARIMAGE:FILESTART', function (args) {
-        var { url } = args.json;
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            url,
-            fileId,
-            fileVersion
-        };
-        this.uploadAvatarImageFileAWS(params);
-    });
-
-    API.uploadAvatarImageFileAWS = function (params) {
-        return webApiService
-            .execute({
-                url: params.url,
-                uploadFilePUT: true,
-                fileData: $app.avatarImage.base64File,
-                fileMIME: 'image/png',
-                headers: {
-                    'Content-MD5': $app.avatarImage.fileMd5
-                }
-            })
-            .then((json) => {
-                if (json.status !== 200) {
-                    $app.avatarDialog.loading = false;
-                    $app.changeAvatarImageDialogLoading = false;
-                    this.$throw('Avatar image upload failed', json, params.url);
-                }
-                var args = {
-                    json,
-                    params
-                };
-                this.$emit('AVATARIMAGE:FILEAWS', args);
-                return args;
-            });
-    };
-
-    API.$on('AVATARIMAGE:FILEAWS', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadAvatarImageFileFinish(params);
-    });
-
-    API.$on('AVATARIMAGE:FILEFINISH', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadAvatarImageSigStart(params);
-    });
-
-    API.$on('AVATARIMAGE:SIGSTART', function (args) {
-        var { url } = args.json;
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            url,
-            fileId,
-            fileVersion
-        };
-        this.uploadAvatarImageSigAWS(params);
-    });
-
-    API.uploadAvatarImageSigAWS = function (params) {
-        return webApiService
-            .execute({
-                url: params.url,
-                uploadFilePUT: true,
-                fileData: $app.avatarImage.base64SignatureFile,
-                fileMIME: 'application/x-rsync-signature',
-                headers: {
-                    'Content-MD5': $app.avatarImage.signatureMd5
-                }
-            })
-            .then((json) => {
-                if (json.status !== 200) {
-                    $app.avatarDialog.loading = false;
-                    $app.changeAvatarImageDialogLoading = false;
-                    this.$throw('Avatar image upload failed', json, params.url);
-                }
-                var args = {
-                    json,
-                    params
-                };
-                this.$emit('AVATARIMAGE:SIGAWS', args);
-                return args;
-            });
-    };
-
-    API.$on('AVATARIMAGE:SIGAWS', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadAvatarImageSigFinish(params);
-    });
-
-    API.$on('AVATARIMAGE:SIGFINISH', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var parmas = {
-            id: $app.avatarImage.avatarId,
-            imageUrl: `${API.endpointDomain}/file/${fileId}/${fileVersion}/file`
-        };
-        imageRequest.setAvatarImage(parmas);
-    });
-
-    // Upload world image
-
-    $app.methods.onFileChangeWorldImage = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#WorldImageUploadButton')) {
-                document.querySelector('#WorldImageUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (
-            !files.length ||
-            !this.worldDialog.visible ||
-            this.worldDialog.loading
-        ) {
-            clearFile();
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        this.worldDialog.loading = true;
-        this.changeWorldImageDialogLoading = true;
-        var r = new FileReader();
-        r.onload = async function (file) {
-            var base64File = await $app.resizeImageToFitLimits(btoa(r.result));
-            // 10MB
-            var fileMd5 = await $app.genMd5(base64File);
-            var fileSizeInBytes = parseInt(file.total, 10);
-            var base64SignatureFile = await $app.genSig(base64File);
-            var signatureMd5 = await $app.genMd5(base64SignatureFile);
-            var signatureSizeInBytes = parseInt(
-                await $app.genLength(base64SignatureFile),
-                10
-            );
-            var worldId = $app.worldDialog.id;
-            var { imageUrl } = $app.worldDialog.ref;
-            var fileId = $utils.extractFileId(imageUrl);
-            if (!fileId) {
-                $app.$message({
-                    message: $t('message.world.image_invalid'),
-                    type: 'error'
-                });
-                clearFile();
-                return;
-            }
-            $app.worldImage = {
-                base64File,
-                fileMd5,
-                base64SignatureFile,
-                signatureMd5,
-                fileId,
-                worldId
-            };
-            var params = {
-                fileMd5,
-                fileSizeInBytes,
-                signatureMd5,
-                signatureSizeInBytes
-            };
-            imageRequest.uploadWorldImage(params, fileId);
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
-
-    API.$on('WORLDIMAGE:INIT', function (args) {
-        var fileId = args.json.id;
-        var fileVersion =
-            args.json.versions[args.json.versions.length - 1].version;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadWorldImageFileStart(params);
-    });
-
-    API.$on('WORLDIMAGE:FILESTART', function (args) {
-        var { url } = args.json;
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            url,
-            fileId,
-            fileVersion
-        };
-        this.uploadWorldImageFileAWS(params);
-    });
-
-    API.uploadWorldImageFileAWS = function (params) {
-        return webApiService
-            .execute({
-                url: params.url,
-                uploadFilePUT: true,
-                fileData: $app.worldImage.base64File,
-                fileMIME: 'image/png',
-                headers: {
-                    'Content-MD5': $app.worldImage.fileMd5
-                }
-            })
-            .then((json) => {
-                if (json.status !== 200) {
-                    $app.worldDialog.loading = false;
-                    $app.changeWorldImageDialogLoading = false;
-                    this.$throw('World image upload failed', json, params.url);
-                }
-                var args = {
-                    json,
-                    params
-                };
-                this.$emit('WORLDIMAGE:FILEAWS', args);
-                return args;
-            });
-    };
-
-    API.$on('WORLDIMAGE:FILEAWS', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadWorldImageFileFinish(params);
-    });
-
-    API.$on('WORLDIMAGE:FILEFINISH', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadWorldImageSigStart(params);
-    });
-
-    API.$on('WORLDIMAGE:SIGSTART', function (args) {
-        var { url } = args.json;
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            url,
-            fileId,
-            fileVersion
-        };
-        this.uploadWorldImageSigAWS(params);
-    });
-
-    API.uploadWorldImageSigAWS = function (params) {
-        return webApiService
-            .execute({
-                url: params.url,
-                uploadFilePUT: true,
-                fileData: $app.worldImage.base64SignatureFile,
-                fileMIME: 'application/x-rsync-signature',
-                headers: {
-                    'Content-MD5': $app.worldImage.signatureMd5
-                }
-            })
-            .then((json) => {
-                if (json.status !== 200) {
-                    $app.worldDialog.loading = false;
-                    $app.changeWorldImageDialogLoading = false;
-                    this.$throw('World image upload failed', json, params.url);
-                }
-                var args = {
-                    json,
-                    params
-                };
-                this.$emit('WORLDIMAGE:SIGAWS', args);
-                return args;
-            });
-    };
-
-    API.$on('WORLDIMAGE:SIGAWS', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var params = {
-            fileId,
-            fileVersion
-        };
-        imageRequest.uploadWorldImageSigFinish(params);
-    });
-
-    API.$on('WORLDIMAGE:SIGFINISH', function (args) {
-        var { fileId, fileVersion } = args.params;
-        var parmas = {
-            id: $app.worldImage.worldId,
-            imageUrl: `${API.endpointDomain}/file/${fileId}/${fileVersion}/file`
-        };
-        imageRequest.setWorldImage(parmas);
-    });
-
-    API.$on('AVATARIMAGE:SET', function (args) {
-        $app.avatarDialog.loading = false;
-        $app.changeAvatarImageDialogLoading = false;
-        if (args.json.imageUrl === args.params.imageUrl) {
-            $app.$message({
-                message: $t('message.avatar.image_changed'),
-                type: 'success'
-            });
-            $app.displayPreviousImages('Avatar', 'Change');
-        } else {
-            this.$throw(0, 'Avatar image change failed', args.params.imageUrl);
-        }
-    });
-
-    API.$on('WORLDIMAGE:SET', function (args) {
-        $app.worldDialog.loading = false;
-        $app.changeWorldImageDialogLoading = false;
-        if (args.json.imageUrl === args.params.imageUrl) {
-            $app.$message({
-                message: $t('message.world.image_changed'),
-                type: 'success'
-            });
-            $app.displayPreviousImages('World', 'Change');
-        } else {
-            this.$throw(0, 'World image change failed', args.params.imageUrl);
-        }
-    });
-
     // Set avatar/world image
-
-    $app.methods.displayPreviousImages = function (type, command) {
-        this.previousImagesTableFileId = '';
-        this.previousImagesTable = [];
-        var imageUrl = '';
-        if (type === 'Avatar') {
-            var { imageUrl } = this.avatarDialog.ref;
-        } else if (type === 'World') {
-            var { imageUrl } = this.worldDialog.ref;
-        } else if (type === 'User') {
-            imageUrl = this.userDialog.ref.currentAvatarImageUrl;
-        }
-        var fileId = $utils.extractFileId(imageUrl);
-        if (!fileId) {
-            return;
-        }
-        var params = {
-            fileId
-        };
-        if (command === 'Display') {
-            this.previousImagesDialogVisible = true;
-            this.$nextTick(() =>
-                $app.adjustDialogZ(this.$refs.previousImagesDialog.$el)
-            );
-        }
-        if (type === 'Avatar') {
-            if (command === 'Change') {
-                this.changeAvatarImageDialogVisible = true;
-                this.$nextTick(() =>
-                    $app.adjustDialogZ(this.$refs.changeAvatarImageDialog.$el)
-                );
-            }
-            imageRequest.getAvatarImages(params).then((args) => {
-                this.previousImagesTableFileId = args.json.id;
-                var images = [];
-                args.json.versions.forEach((item) => {
-                    if (!item.deleted) {
-                        images.unshift(item);
-                    }
-                });
-                this.checkPreviousImageAvailable(images);
-            });
-        } else if (type === 'World') {
-            if (command === 'Change') {
-                this.changeWorldImageDialogVisible = true;
-                this.$nextTick(() =>
-                    $app.adjustDialogZ(this.$refs.changeWorldImageDialog.$el)
-                );
-            }
-            imageRequest.getWorldImages(params).then((args) => {
-                this.previousImagesTableFileId = args.json.id;
-                var images = [];
-                args.json.versions.forEach((item) => {
-                    if (!item.deleted) {
-                        images.unshift(item);
-                    }
-                });
-                this.checkPreviousImageAvailable(images);
-            });
-        } else if (type === 'User') {
-            imageRequest.getAvatarImages(params).then((args) => {
-                this.previousImagesTableFileId = args.json.id;
-                var images = [];
-                args.json.versions.forEach((item) => {
-                    if (!item.deleted) {
-                        images.unshift(item);
-                    }
-                });
-                this.checkPreviousImageAvailable(images);
-            });
-        }
-    };
 
     $app.methods.checkPreviousImageAvailable = async function (images) {
         this.previousImagesTable = [];
@@ -13758,139 +10344,20 @@ console.log(`isLinux: ${LINUX}`);
         }
     };
 
+    // todo: userdialog
     $app.data.previousImagesDialogVisible = false;
-    $app.data.changeAvatarImageDialogVisible = false;
-    $app.data.changeAvatarImageDialogLoading = false;
-    $app.data.changeWorldImageDialogVisible = false;
-    $app.data.changeWorldImageDialogLoading = false;
     $app.data.previousImagesTable = [];
-    $app.data.previousImagesFileId = '';
 
     API.$on('LOGIN', function () {
         $app.previousImagesTable = [];
-        $app.previousImagesDialogVisible = false;
     });
-
-    API.$on('AVATARIMAGE:GET', function (args) {
-        $app.storeAvatarImage(args);
-    });
-
-    $app.methods.storeAvatarImage = function (args) {
-        var refCreatedAt = args.json.versions[0];
-        var fileCreatedAt = refCreatedAt.created_at;
-        var fileId = args.params.fileId;
-        var avatarName = '';
-        var imageName = args.json.name;
-        var avatarNameRegex = /Avatar - (.*) - Image -/gi.exec(imageName);
-        if (avatarNameRegex) {
-            avatarName = this.replaceBioSymbols(avatarNameRegex[1]);
-        }
-        var ownerId = args.json.ownerId;
-        var avatarInfo = {
-            ownerId,
-            avatarName,
-            fileCreatedAt
-        };
-        API.cachedAvatarNames.set(fileId, avatarInfo);
-        return avatarInfo;
-    };
-
-    $app.methods.setAvatarImage = function (image) {
-        this.changeAvatarImageDialogLoading = true;
-        var parmas = {
-            id: this.avatarDialog.id,
-            imageUrl: `${API.endpointDomain}/file/${this.previousImagesTableFileId}/${image.version}/file`
-        };
-        imageRequest.setAvatarImage(parmas).finally(() => {
-            this.changeAvatarImageDialogLoading = false;
-            this.changeAvatarImageDialogVisible = false;
-        });
-    };
-
-    $app.methods.uploadAvatarImage = function () {
-        document.getElementById('AvatarImageUploadButton').click();
-    };
-
-    // images.pug line 63, useless now
-    // $app.methods.deleteAvatarImage = function () {
-    //     this.changeAvatarImageDialogLoading = true;
-    //     var parmas = {
-    //         fileId: this.previousImagesTableFileId,
-    //         version: this.previousImagesTable[0].version
-    //     };
-    //     vrcPlusIconRequest
-    //         .deleteFileVersion(parmas)
-    //         .then((args) => {
-    //             this.previousImagesTableFileId = args.json.id;
-    //             var images = [];
-    //             args.json.versions.forEach((item) => {
-    //                 if (!item.deleted) {
-    //                     images.unshift(item);
-    //                 }
-    //             });
-    //             this.checkPreviousImageAvailable(images);
-    //         })
-    //         .finally(() => {
-    //             this.changeAvatarImageDialogLoading = false;
-    //         });
-    // };
-
-    $app.methods.setWorldImage = function (image) {
-        this.changeWorldImageDialogLoading = true;
-        var parmas = {
-            id: this.worldDialog.id,
-            imageUrl: `${API.endpointDomain}/file/${this.previousImagesTableFileId}/${image.version}/file`
-        };
-        imageRequest.setWorldImage(parmas).finally(() => {
-            this.changeWorldImageDialogLoading = false;
-            this.changeWorldImageDialogVisible = false;
-        });
-    };
-
-    $app.methods.uploadWorldImage = function () {
-        document.getElementById('WorldImageUploadButton').click();
-    };
-
-    // images.pug line 63
-    // $app.methods.deleteWorldImage = function () {
-    //     this.changeWorldImageDialogLoading = true;
-    //     var parmas = {
-    //         fileId: this.previousImagesTableFileId,
-    //         version: this.previousImagesTable[0].version
-    //     };
-    //     vrcPlusIconRequest
-    //         .deleteFileVersion(parmas)
-    //         .then((args) => {
-    //             this.previousImagesTableFileId = args.json.id;
-    //             var images = [];
-    //             args.json.versions.forEach((item) => {
-    //                 if (!item.deleted) {
-    //                     images.unshift(item);
-    //                 }
-    //             });
-    //             this.checkPreviousImageAvailable(images);
-    //         })
-    //         .finally(() => {
-    //             this.changeWorldImageDialogLoading = false;
-    //         });
-    // };
-
-    $app.methods.compareCurrentImage = function (image) {
-        if (
-            `${API.endpointDomain}/file/${this.previousImagesTableFileId}/${image.version}/file` ===
-            this.avatarDialog.ref.imageUrl
-        ) {
-            return true;
-        }
-        return false;
-    };
 
     // Avatar names
 
     API.cachedAvatarNames = new Map();
 
     $app.methods.getAvatarName = async function (imageUrl) {
-        var fileId = $utils.extractFileId(imageUrl);
+        var fileId = extractFileId(imageUrl);
         if (!fileId) {
             return {
                 ownerId: '',
@@ -13901,319 +10368,18 @@ console.log(`isLinux: ${LINUX}`);
             return API.cachedAvatarNames.get(fileId);
         }
         var args = await imageRequest.getAvatarImages({ fileId });
-        return this.storeAvatarImage(args);
-    };
-
-    $app.data.discordNamesDialogVisible = false;
-    $app.data.discordNamesContent = '';
-
-    $app.methods.showDiscordNamesDialog = function () {
-        var { friends } = API.currentUser;
-        if (Array.isArray(friends) === false) {
-            return;
-        }
-        var lines = ['DisplayName,DiscordName'];
-        var _ = function (str) {
-            if (/[\x00-\x1f,"]/.test(str) === true) {
-                return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-        };
-        for (var userId of friends) {
-            var { ref } = this.friends.get(userId);
-            var discord = '';
-            if (typeof ref === 'undefined') {
-                continue;
-            }
-            var name = ref.displayName;
-            if (ref.statusDescription) {
-                var statusRegex = /(?:discord|dc|dis)(?: |=|:|˸|;)(.*)/gi.exec(
-                    ref.statusDescription
-                );
-                if (statusRegex) {
-                    discord = statusRegex[1];
-                }
-            }
-            if (!discord && ref.bio) {
-                var bioRegex = /(?:discord|dc|dis)(?: |=|:|˸|;)(.*)/gi.exec(
-                    ref.bio
-                );
-                if (bioRegex) {
-                    discord = bioRegex[1];
-                }
-            }
-            if (!discord) {
-                continue;
-            }
-            discord = discord.trim();
-            lines.push(`${_(name)},${_(discord)}`);
-        }
-        this.discordNamesContent = lines.join('\n');
-        this.discordNamesDialogVisible = true;
-    };
-
-    // userDialog world/avatar tab click
-
-    $app.data.userDialogLastActiveTab = '';
-    $app.data.userDialogLastAvatar = '';
-    $app.data.userDialogLastWorld = '';
-    $app.data.userDialogLastFavoriteWorld = '';
-    $app.data.userDialogLastGroup = '';
-
-    $app.methods.userDialogTabClick = function (obj) {
-        var userId = this.userDialog.id;
-        if (this.userDialogLastActiveTab === obj.label) {
-            return;
-        }
-        if (obj.label === $t('dialog.user.groups.header')) {
-            if (this.userDialogLastGroup !== userId) {
-                this.userDialogLastGroup = userId;
-                this.getUserGroups(userId);
-            }
-        } else if (obj.label === $t('dialog.user.avatars.header')) {
-            this.setUserDialogAvatars(userId);
-            if (this.userDialogLastAvatar !== userId) {
-                this.userDialogLastAvatar = userId;
-                if (userId === API.currentUser.id) {
-                    this.refreshUserDialogAvatars();
-                } else {
-                    this.setUserDialogAvatarsRemote(userId);
-                }
-            }
-        } else if (obj.label === $t('dialog.user.worlds.header')) {
-            this.setUserDialogWorlds(userId);
-            if (this.userDialogLastWorld !== userId) {
-                this.userDialogLastWorld = userId;
-                this.refreshUserDialogWorlds();
-            }
-        } else if (obj.label === $t('dialog.user.favorite_worlds.header')) {
-            if (this.userDialogLastFavoriteWorld !== userId) {
-                this.userDialogLastFavoriteWorld = userId;
-                this.getUserFavoriteWorlds(userId);
-            }
-        } else if (obj.label === $t('dialog.user.json.header')) {
-            this.refreshUserDialogTreeData();
-        }
-        this.userDialogLastActiveTab = obj.label;
+        return storeAvatarImage(args);
     };
 
     // VRChat Config JSON
 
-    $app.data.VRChatConfigFile = {};
-    $app.data.VRChatConfigList = {};
-
-    $app.methods.readVRChatConfigFile = async function () {
-        this.VRChatConfigFile = {};
-        var config = await AppApi.ReadConfigFile();
-        if (config) {
-            try {
-                this.VRChatConfigFile = JSON.parse(config);
-                if (
-                    typeof this.VRChatConfigFile
-                        .picture_output_split_by_date === 'undefined'
-                ) {
-                    this.VRChatConfigFile.picture_output_split_by_date = true;
-                }
-            } catch {
-                this.$message({
-                    message: 'Invalid JSON in config.json',
-                    type: 'error'
-                });
-                throw new Error('Invalid JSON in config.json');
-            }
-        }
-    };
-
-    $app.methods.WriteVRChatConfigFile = function () {
-        var json = JSON.stringify(this.VRChatConfigFile, null, '\t');
-        AppApi.WriteConfigFile(json);
-    };
-
-    $app.data.VRChatConfigDialog = {
-        visible: false
-    };
-
-    API.$on('LOGIN', function () {
-        $app.VRChatConfigDialog.visible = false;
-    });
+    $app.data.isVRChatConfigDialogVisible = false;
 
     $app.methods.showVRChatConfig = async function () {
-        this.VRChatConfigList = {
-            cache_size: {
-                name: $t('dialog.config_json.max_cache_size'),
-                default: '30',
-                type: 'number',
-                min: 30
-            },
-            cache_expiry_delay: {
-                name: $t('dialog.config_json.cache_expiry_delay'),
-                default: '30',
-                type: 'number',
-                min: 30
-            },
-            cache_directory: {
-                name: $t('dialog.config_json.cache_directory'),
-                default: '%AppData%\\..\\LocalLow\\VRChat\\VRChat',
-                folderBrowser: true
-            },
-            picture_output_folder: {
-                name: $t('dialog.config_json.picture_directory'),
-                // my pictures folder
-                default: `%UserProfile%\\Pictures\\VRChat`,
-                folderBrowser: true
-            },
-            // dynamic_bone_max_affected_transform_count: {
-            //     name: 'Dynamic Bones Limit Max Transforms (0 disable all transforms)',
-            //     default: '32',
-            //     type: 'number',
-            //     min: 0
-            // },
-            // dynamic_bone_max_collider_check_count: {
-            //     name: 'Dynamic Bones Limit Max Collider Collisions (0 disable all colliders)',
-            //     default: '8',
-            //     type: 'number',
-            //     min: 0
-            // },
-            fpv_steadycam_fov: {
-                name: $t('dialog.config_json.fpv_steadycam_fov'),
-                default: '50',
-                type: 'number',
-                min: 30,
-                max: 110
-            }
-        };
-        await this.readVRChatConfigFile();
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.VRChatConfigDialog.$el)
-        );
-        this.VRChatConfigDialog.visible = true;
+        this.isVRChatConfigDialogVisible = true;
         if (!this.VRChatUsedCacheSize) {
             this.getVRChatCacheSize();
         }
-    };
-
-    $app.methods.openConfigFolderBrowser = async function (value) {
-        var oldPath = this.VRChatConfigFile[value];
-        var newPath = await this.folderSelectorDialog(oldPath);
-        if (newPath) {
-            this.VRChatConfigFile[value] = newPath;
-        }
-        this.redrawVRChatConfigDialog();
-    };
-
-    $app.methods.redrawVRChatConfigDialog = function () {
-        this.VRChatConfigDialog.visible = false;
-        this.VRChatConfigDialog.visible = true;
-    };
-
-    $app.methods.saveVRChatConfigFile = function () {
-        for (var item in this.VRChatConfigFile) {
-            if (item === 'picture_output_split_by_date') {
-                // this one is default true, it's special
-                if (this.VRChatConfigFile[item]) {
-                    delete this.VRChatConfigFile[item];
-                }
-            } else if (this.VRChatConfigFile[item] === '') {
-                delete this.VRChatConfigFile[item];
-            } else if (
-                typeof this.VRChatConfigFile[item] === 'boolean' &&
-                this.VRChatConfigFile[item] === false
-            ) {
-                delete this.VRChatConfigFile[item];
-            } else if (
-                typeof this.VRChatConfigFile[item] === 'string' &&
-                !isNaN(this.VRChatConfigFile[item])
-            ) {
-                this.VRChatConfigFile[item] = parseInt(
-                    this.VRChatConfigFile[item],
-                    10
-                );
-            }
-        }
-        this.VRChatConfigDialog.visible = false;
-        this.WriteVRChatConfigFile();
-    };
-
-    $app.data.VRChatScreenshotResolutions = [
-        { name: '1280x720 (720p)', width: 1280, height: 720 },
-        { name: '1920x1080 (1080p Default)', width: '', height: '' },
-        { name: '2560x1440 (1440p)', width: 2560, height: 1440 },
-        { name: '3840x2160 (4K)', width: 3840, height: 2160 }
-    ];
-
-    $app.data.VRChatCameraResolutions = [
-        { name: '1280x720 (720p)', width: 1280, height: 720 },
-        { name: '1920x1080 (1080p Default)', width: '', height: '' },
-        { name: '2560x1440 (1440p)', width: 2560, height: 1440 },
-        { name: '3840x2160 (4K)', width: 3840, height: 2160 },
-        { name: '7680x4320 (8K)', width: 7680, height: 4320 }
-    ];
-
-    $app.methods.getVRChatResolution = function (res) {
-        switch (res) {
-            case '1280x720':
-                return '1280x720 (720p)';
-            case '1920x1080':
-                return '1920x1080 (1080p)';
-            case '2560x1440':
-                return '2560x1440 (2K)';
-            case '3840x2160':
-                return '3840x2160 (4K)';
-            case '7680x4320':
-                return '7680x4320 (8K)';
-        }
-        return `${res} (Custom)`;
-    };
-
-    $app.methods.getVRChatCameraResolution = function () {
-        if (
-            this.VRChatConfigFile.camera_res_height &&
-            this.VRChatConfigFile.camera_res_width
-        ) {
-            var res = `${this.VRChatConfigFile.camera_res_width}x${this.VRChatConfigFile.camera_res_height}`;
-            return this.getVRChatResolution(res);
-        }
-        return '1920x1080 (1080p)';
-    };
-
-    $app.methods.getVRChatScreenshotResolution = function () {
-        if (
-            this.VRChatConfigFile.screenshot_res_height &&
-            this.VRChatConfigFile.screenshot_res_width
-        ) {
-            var res = `${this.VRChatConfigFile.screenshot_res_width}x${this.VRChatConfigFile.screenshot_res_height}`;
-            return this.getVRChatResolution(res);
-        }
-        return '1920x1080 (1080p)';
-    };
-
-    $app.methods.setVRChatCameraResolution = function (res) {
-        this.VRChatConfigFile.camera_res_height = res.height;
-        this.VRChatConfigFile.camera_res_width = res.width;
-        this.redrawVRChatConfigDialog();
-    };
-
-    $app.methods.setVRChatScreenshotResolution = function (res) {
-        this.VRChatConfigFile.screenshot_res_height = res.height;
-        this.VRChatConfigFile.screenshot_res_width = res.width;
-        this.redrawVRChatConfigDialog();
-    };
-
-    $app.methods.getVRChatSpoutResolution = function () {
-        if (
-            this.VRChatConfigFile.camera_spout_res_height &&
-            this.VRChatConfigFile.camera_spout_res_width
-        ) {
-            var res = `${this.VRChatConfigFile.camera_spout_res_width}x${this.VRChatConfigFile.camera_spout_res_height}`;
-            return this.getVRChatResolution(res);
-        }
-        return '1920x1080 (1080p)';
-    };
-
-    $app.methods.setVRChatSpoutResolution = function (res) {
-        this.VRChatConfigFile.camera_spout_res_height = res.height;
-        this.VRChatConfigFile.camera_spout_res_width = res.width;
-        this.redrawVRChatConfigDialog();
     };
 
     // Auto Launch Shortcuts
@@ -14272,7 +10438,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.methods.processScreenshot = async function (path) {
         var newPath = path;
         if (this.screenshotHelper) {
-            var location = $utils.parseLocation(this.lastLocation.location);
+            var location = parseLocation(this.lastLocation.location);
             var metadata = {
                 application: 'VRCX',
                 version: 1,
@@ -14307,130 +10473,6 @@ console.log(`isLinux: ${LINUX}`);
         }
     };
 
-    $app.methods.getAndDisplayScreenshotFromFile = async function () {
-        var filePath = '';
-        if (LINUX) {
-            filePath = await window.electron.openFileDialog(); // PNG filter is applied in main.js
-        } else {
-            filePath = await AppApi.OpenFileSelectorDialog(
-                await AppApi.GetVRChatPhotosLocation(),
-                '.png',
-                'PNG Files (*.png)|*.png'
-            );
-        }
-
-        if (filePath === '') {
-            return;
-        }
-
-        this.screenshotMetadataResetSearch();
-        this.getAndDisplayScreenshot(filePath);
-    };
-
-    $app.methods.getAndDisplayScreenshot = function (
-        path,
-        needsCarouselFiles = true
-    ) {
-        AppApi.GetScreenshotMetadata(path).then((metadata) =>
-            this.displayScreenshotMetadata(metadata, needsCarouselFiles)
-        );
-    };
-
-    $app.methods.openScreenshotFileDialog = async function () {
-        if (LINUX) {
-            const filePath = await window.electron.openFileDialog();
-            if (filePath) {
-                this.screenshotMetadataResetSearch();
-                this.getAndDisplayScreenshot(filePath);
-            }
-        } else {
-            AppApi.OpenScreenshotFileDialog();
-        }
-    };
-
-    $app.methods.getAndDisplayLastScreenshot = function () {
-        this.screenshotMetadataResetSearch();
-        AppApi.GetLastScreenshot().then((path) => {
-            if (!path) {
-                return;
-            }
-            this.getAndDisplayScreenshot(path);
-        });
-    };
-
-    /**
-     * Function receives an unmodified json string grabbed from the screenshot file
-     * Error checking and and verification of data is done in .NET already; In the case that the data/file is invalid, a JSON object with the token "error" will be returned containing a description of the problem.
-     * Example: {"error":"Invalid file selected. Please select a valid VRChat screenshot."}
-     * See docs/screenshotMetadata.json for schema
-     * @param {string} metadata - JSON string grabbed from PNG file
-     * @param {string} needsCarouselFiles - Whether or not to get the last/next files for the carousel
-     * @returns {void}
-     */
-    $app.methods.displayScreenshotMetadata = async function (
-        json,
-        needsCarouselFiles = true
-    ) {
-        var D = this.screenshotMetadataDialog;
-        var metadata = JSON.parse(json);
-        if (!metadata?.sourceFile) {
-            D.metadata = {};
-            D.metadata.error =
-                'Invalid file selected. Please select a valid VRChat screenshot.';
-            return;
-        }
-
-        // Get extra data for display dialog like resolution, file size, etc
-        D.loading = true;
-        var extraData = await AppApi.GetExtraScreenshotData(
-            metadata.sourceFile,
-            needsCarouselFiles
-        );
-        D.loading = false;
-        var extraDataObj = JSON.parse(extraData);
-        Object.assign(metadata, extraDataObj);
-
-        // console.log("Displaying screenshot metadata", json, "extra data", extraDataObj, "path", json.filePath)
-
-        D.metadata = metadata;
-
-        var regex = metadata.fileName.match(
-            /VRChat_((\d{3,})x(\d{3,})_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.(\d{1,})|(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.(\d{3})_(\d{3,})x(\d{3,}))/
-        );
-        if (regex) {
-            if (typeof regex[2] !== 'undefined' && regex[4].length === 4) {
-                // old format
-                // VRChat_3840x2160_2022-02-02_03-21-39.771
-                var date = `${regex[4]}-${regex[5]}-${regex[6]}`;
-                var time = `${regex[7]}:${regex[8]}:${regex[9]}`;
-                D.metadata.dateTime = Date.parse(`${date} ${time}`);
-                // D.metadata.resolution = `${regex[2]}x${regex[3]}`;
-            } else if (
-                typeof regex[11] !== 'undefined' &&
-                regex[11].length === 4
-            ) {
-                // new format
-                // VRChat_2023-02-16_10-39-25.274_3840x2160
-                var date = `${regex[11]}-${regex[12]}-${regex[13]}`;
-                var time = `${regex[14]}:${regex[15]}:${regex[16]}`;
-                D.metadata.dateTime = Date.parse(`${date} ${time}`);
-                // D.metadata.resolution = `${regex[18]}x${regex[19]}`;
-            }
-        }
-        if (metadata.timestamp) {
-            D.metadata.dateTime = Date.parse(metadata.timestamp);
-        }
-        if (!D.metadata.dateTime) {
-            D.metadata.dateTime = Date.parse(metadata.creationDate);
-        }
-
-        if (this.fullscreenImageDialog?.visible) {
-            this.showFullscreenImageDialog(D.metadata.filePath);
-        } else {
-            this.openScreenshotMetadataDialog();
-        }
-    };
-
     $app.data.screenshotMetadataDialog = {
         visible: false,
         loading: false,
@@ -14441,183 +10483,11 @@ console.log(`isLinux: ${LINUX}`);
         isUploading: false
     };
 
-    $app.methods.openScreenshotMetadataDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.screenshotMetadataDialog.$el)
-        );
-        var D = this.screenshotMetadataDialog;
-        D.visible = true;
-    };
-
     $app.methods.showScreenshotMetadataDialog = function () {
-        var D = this.screenshotMetadataDialog;
-        if (!D.metadata.filePath) {
-            this.getAndDisplayLastScreenshot();
-        }
-        this.openScreenshotMetadataDialog();
+        this.screenshotMetadataDialog.visible = true;
     };
 
-    $app.methods.screenshotMetadataResetSearch = function () {
-        var D = this.screenshotMetadataDialog;
-
-        D.search = '';
-        D.searchIndex = null;
-        D.searchResults = null;
-    };
-
-    $app.data.screenshotMetadataSearchInputs = 0;
-    $app.methods.screenshotMetadataSearch = function () {
-        var D = this.screenshotMetadataDialog;
-
-        // Don't search if user is still typing
-        this.screenshotMetadataSearchInputs++;
-        let current = this.screenshotMetadataSearchInputs;
-        setTimeout(() => {
-            if (current !== this.screenshotMetadataSearchInputs) {
-                return;
-            }
-            this.screenshotMetadataSearchInputs = 0;
-
-            if (D.search === '') {
-                this.screenshotMetadataResetSearch();
-                if (D.metadata.filePath !== null) {
-                    // Re-retrieve the current screenshot metadata and get previous/next files for regular carousel directory navigation
-                    this.getAndDisplayScreenshot(D.metadata.filePath, true);
-                }
-                return;
-            }
-
-            var searchType = D.searchTypes.indexOf(D.searchType); // Matches the search type enum in .NET
-            D.loading = true;
-            AppApi.FindScreenshotsBySearch(D.search, searchType)
-                .then((json) => {
-                    var results = JSON.parse(json);
-
-                    if (results.length === 0) {
-                        D.metadata = {};
-                        D.metadata.error = 'No results found';
-
-                        D.searchIndex = null;
-                        D.searchResults = null;
-                        return;
-                    }
-
-                    D.searchIndex = 0;
-                    D.searchResults = results;
-
-                    // console.log("Search results", results)
-                    this.getAndDisplayScreenshot(results[0], false);
-                })
-                .finally(() => {
-                    D.loading = false;
-                });
-        }, 500);
-    };
-
-    $app.methods.screenshotMetadataCarouselChangeSearch = function (index) {
-        var D = this.screenshotMetadataDialog;
-        var searchIndex = D.searchIndex;
-        var filesArr = D.searchResults;
-
-        if (searchIndex === null) {
-            return;
-        }
-
-        if (index === 0) {
-            if (searchIndex > 0) {
-                this.getAndDisplayScreenshot(filesArr[searchIndex - 1], false);
-                searchIndex--;
-            } else {
-                this.getAndDisplayScreenshot(
-                    filesArr[filesArr.length - 1],
-                    false
-                );
-                searchIndex = filesArr.length - 1;
-            }
-        } else if (index === 2) {
-            if (searchIndex < filesArr.length - 1) {
-                this.getAndDisplayScreenshot(filesArr[searchIndex + 1], false);
-                searchIndex++;
-            } else {
-                this.getAndDisplayScreenshot(filesArr[0], false);
-                searchIndex = 0;
-            }
-        }
-
-        if (typeof this.$refs.screenshotMetadataCarousel !== 'undefined') {
-            this.$refs.screenshotMetadataCarousel.setActiveItem(1);
-        }
-
-        D.searchIndex = searchIndex;
-    };
-
-    $app.methods.screenshotMetadataCarouselChange = function (index) {
-        var D = this.screenshotMetadataDialog;
-        var searchIndex = D.searchIndex;
-
-        if (searchIndex !== null) {
-            this.screenshotMetadataCarouselChangeSearch(index);
-            return;
-        }
-
-        if (index === 0) {
-            if (D.metadata.previousFilePath) {
-                this.getAndDisplayScreenshot(D.metadata.previousFilePath);
-            } else {
-                this.getAndDisplayScreenshot(D.metadata.filePath);
-            }
-        }
-        if (index === 2) {
-            if (D.metadata.nextFilePath) {
-                this.getAndDisplayScreenshot(D.metadata.nextFilePath);
-            } else {
-                this.getAndDisplayScreenshot(D.metadata.filePath);
-            }
-        }
-        if (typeof this.$refs.screenshotMetadataCarousel !== 'undefined') {
-            this.$refs.screenshotMetadataCarousel.setActiveItem(1);
-        }
-
-        if (this.fullscreenImageDialog.visible) {
-            // TODO
-        }
-    };
-
-    $app.methods.uploadScreenshotToGallery = function () {
-        var D = this.screenshotMetadataDialog;
-        if (D.metadata.fileSizeBytes > 10000000) {
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            return;
-        }
-        D.isUploading = true;
-        AppApi.GetFileBase64(D.metadata.filePath)
-            .then((base64Body) => {
-                vrcPlusImageRequest
-                    .uploadGalleryImage(base64Body)
-                    .then((args) => {
-                        $app.$message({
-                            message: $t('message.gallery.uploaded'),
-                            type: 'success'
-                        });
-                        return args;
-                    })
-                    .finally(() => {
-                        D.isUploading = false;
-                    });
-            })
-            .catch((err) => {
-                $app.$message({
-                    message: $t('message.gallery.failed'),
-                    type: 'error'
-                });
-                console.error(err);
-                D.isUploading = false;
-            });
-    };
-
+    $app.data.currentlyDroppingFile = null;
     /**
      * This function is called by .NET(CefCustomDragHandler#CefCustomDragHandler) when a file is dragged over a drop zone in the app window.
      * @param {string} filePath - The full path to the file being dragged into the window
@@ -14626,80 +10496,9 @@ console.log(`isLinux: ${LINUX}`);
         this.currentlyDroppingFile = filePath;
     };
 
-    $app.methods.handleDrop = function (event) {
-        if (this.currentlyDroppingFile === null) {
-            return;
-        }
-        console.log('Dropped file into viewer: ', this.currentlyDroppingFile);
-
-        this.screenshotMetadataResetSearch();
-        this.getAndDisplayScreenshot(this.currentlyDroppingFile);
-
-        event.preventDefault();
-    };
-
-    $app.methods.copyImageToClipboard = function (path) {
-        if (!path) {
-            return;
-        }
-        AppApi.CopyImageToClipboard(path).then(() => {
-            this.$message({
-                message: 'Image copied to clipboard',
-                type: 'success'
-            });
-        });
-    };
-
-    $app.methods.openImageFolder = function (path) {
-        if (!path) {
-            return;
-        }
-        AppApi.OpenFolderAndSelectItem(path).then(() => {
-            this.$message({
-                message: 'Opened image folder',
-                type: 'success'
-            });
-        });
-    };
-
     // YouTube API
 
-    $app.data.youTubeApiDialog = {
-        visible: false
-    };
-
-    API.$on('LOGOUT', function () {
-        $app.youTubeApiDialog.visible = false;
-    });
-
-    $app.methods.testYouTubeApiKey = async function () {
-        if (!this.youTubeApiKey) {
-            this.$message({
-                message: 'YouTube API key removed',
-                type: 'success'
-            });
-            this.youTubeApiDialog.visible = false;
-            return;
-        }
-        var data = await this.lookupYouTubeVideo('dQw4w9WgXcQ');
-        if (!data) {
-            this.youTubeApiKey = '';
-            this.$message({
-                message: 'Invalid YouTube API key',
-                type: 'error'
-            });
-        } else {
-            await configRepository.setString(
-                'VRCX_youtubeAPIKey',
-                this.youTubeApiKey
-            );
-            this.$message({
-                message: 'YouTube API key valid!',
-                type: 'success'
-            });
-            this.youTubeApiDialog.visible = false;
-        }
-    };
+    $app.data.isYouTubeApiDialogVisible = false;
 
     $app.methods.changeYouTubeApi = async function (configKey = '') {
         if (configKey === 'VRCX_youtubeAPI') {
@@ -14721,11 +10520,7 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.showYouTubeApiDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.youTubeApiDialog.$el)
-        );
-        var D = this.youTubeApiDialog;
-        D.visible = true;
+        this.isYouTubeApiDialogVisible = true;
     };
 
     // Launch Command Settings handling
@@ -14756,7 +10551,7 @@ console.log(`isLinux: ${LINUX}`);
             D.cacheSize = 0;
             D.cacheLocked = false;
             D.cachePath = '';
-            this.checkVRChatCache(D.ref).then((cacheInfo) => {
+            checkVRChatCache(D.ref).then((cacheInfo) => {
                 if (cacheInfo.Item1 > 0) {
                     D.inCache = true;
                     D.cacheSize = `${(cacheInfo.Item1 / 1048576).toFixed(
@@ -14776,7 +10571,7 @@ console.log(`isLinux: ${LINUX}`);
             D.cacheSize = 0;
             D.cacheLocked = false;
             D.cachePath = '';
-            this.checkVRChatCache(D.ref).then((cacheInfo) => {
+            checkVRChatCache(D.ref).then((cacheInfo) => {
                 if (cacheInfo.Item1 > 0) {
                     D.inCache = true;
                     D.cacheSize = `${(cacheInfo.Item1 / 1048576).toFixed(
@@ -14787,50 +10582,6 @@ console.log(`isLinux: ${LINUX}`);
                 D.cacheLocked = cacheInfo.Item2;
             });
         }
-    };
-
-    // eslint-disable-next-line require-await
-    $app.methods.checkVRChatCache = async function (ref) {
-        if (!ref.unityPackages) {
-            return { Item1: -1, Item2: false, Item3: '' };
-        }
-        var assetUrl = '';
-        var variant = '';
-        for (var i = ref.unityPackages.length - 1; i > -1; i--) {
-            var unityPackage = ref.unityPackages[i];
-            if (unityPackage.variant && unityPackage.variant !== 'security') {
-                continue;
-            }
-            if (
-                unityPackage.platform === 'standalonewindows' &&
-                this.compareUnityVersion(unityPackage.unitySortNumber)
-            ) {
-                assetUrl = unityPackage.assetUrl;
-                if (unityPackage.variant !== 'standard') {
-                    variant = unityPackage.variant;
-                }
-                break;
-            }
-        }
-        if (!assetUrl) {
-            assetUrl = ref.assetUrl;
-        }
-        var id = $utils.extractFileId(assetUrl);
-        var version = parseInt($utils.extractFileVersion(assetUrl), 10);
-        var variantVersion = parseInt(
-            $utils.extractVariantVersion(assetUrl),
-            10
-        );
-        if (!id || !version) {
-            return { Item1: -1, Item2: false, Item3: '' };
-        }
-
-        return AssetBundleManager.CheckVRChatCache(
-            id,
-            version,
-            variant,
-            variantVersion
-        );
     };
 
     $app.methods.getDisplayName = function (userId) {
@@ -14844,61 +10595,10 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.deleteVRChatCache = async function (ref) {
-        var assetUrl = '';
-        var variant = '';
-        for (var i = ref.unityPackages.length - 1; i > -1; i--) {
-            var unityPackage = ref.unityPackages[i];
-            if (
-                unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
-                unityPackage.variant !== 'security'
-            ) {
-                continue;
-            }
-            if (
-                unityPackage.platform === 'standalonewindows' &&
-                this.compareUnityVersion(unityPackage.unitySortNumber)
-            ) {
-                assetUrl = unityPackage.assetUrl;
-                if (unityPackage.variant !== 'standard') {
-                    variant = unityPackage.variant;
-                }
-                break;
-            }
-        }
-        var id = $utils.extractFileId(assetUrl);
-        var version = parseInt($utils.extractFileVersion(assetUrl), 10);
-        var variantVersion = parseInt(
-            $utils.extractVariantVersion(assetUrl),
-            10
-        );
-        await AssetBundleManager.DeleteCache(
-            id,
-            version,
-            variant,
-            variantVersion
-        );
+        await deleteVRChatCache(ref);
         this.getVRChatCacheSize();
         this.updateVRChatWorldCache();
         this.updateVRChatAvatarCache();
-    };
-
-    $app.methods.showDeleteAllVRChatCacheConfirm = function () {
-        this.$confirm(`Continue? Delete all VRChat cache`, 'Confirm', {
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            type: 'info',
-            callback: (action) => {
-                if (action === 'confirm') {
-                    this.deleteAllVRChatCache();
-                }
-            }
-        });
-    };
-
-    $app.methods.deleteAllVRChatCache = async function () {
-        await AssetBundleManager.DeleteAllCache();
-        this.getVRChatCacheSize();
     };
 
     $app.methods.autoVRChatCacheManagement = function () {
@@ -14910,7 +10610,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.methods.sweepVRChatCache = async function () {
         var output = await AssetBundleManager.SweepCache();
         console.log('SweepCache', output);
-        if (this.VRChatConfigDialog.visible) {
+        if (this.isVRChatConfigDialogVisible) {
             this.getVRChatCacheSize();
         }
     };
@@ -14921,7 +10621,7 @@ console.log(`isLinux: ${LINUX}`);
         }
         var { location } = this.lastLocation;
         AppApi.VrcClosedGracefully().then((result) => {
-            if (result || !$utils.isRealInstance(location)) {
+            if (result || !isRealInstance(location)) {
                 return;
             }
             // wait a bit for SteamVR to potentially close before deciding to relaunch
@@ -14965,98 +10665,11 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.methods.getVRChatCacheSize = async function () {
         this.VRChatCacheSizeLoading = true;
-        var totalCacheSize = 20;
-        if (this.VRChatConfigFile.cache_size) {
-            totalCacheSize = this.VRChatConfigFile.cache_size;
-        }
+        var totalCacheSize = 30;
         this.VRChatTotalCacheSize = totalCacheSize;
         var usedCacheSize = await AssetBundleManager.GetCacheSize();
         this.VRChatUsedCacheSize = (usedCacheSize / 1073741824).toFixed(2);
         this.VRChatCacheSizeLoading = false;
-    };
-
-    $app.methods.getBundleLocation = async function (input) {
-        var assetUrl = input;
-        var variant = '';
-        if (assetUrl) {
-            // continue
-        } else if (
-            this.avatarDialog.visible &&
-            this.avatarDialog.ref.unityPackages.length > 0
-        ) {
-            var unityPackages = this.avatarDialog.ref.unityPackages;
-            for (let i = unityPackages.length - 1; i > -1; i--) {
-                var unityPackage = unityPackages[i];
-                if (
-                    unityPackage.variant &&
-                    unityPackage.variant !== 'standard' &&
-                    unityPackage.variant !== 'security'
-                ) {
-                    continue;
-                }
-                if (
-                    unityPackage.platform === 'standalonewindows' &&
-                    this.compareUnityVersion(unityPackage.unitySortNumber)
-                ) {
-                    assetUrl = unityPackage.assetUrl;
-                    if (unityPackage.variant !== 'standard') {
-                        variant = unityPackage.variant;
-                    }
-                    break;
-                }
-            }
-        } else if (
-            this.avatarDialog.visible &&
-            this.avatarDialog.ref.assetUrl
-        ) {
-            assetUrl = this.avatarDialog.ref.assetUrl;
-        } else if (
-            this.worldDialog.visible &&
-            this.worldDialog.ref.unityPackages.length > 0
-        ) {
-            var unityPackages = this.worldDialog.ref.unityPackages;
-            for (let i = unityPackages.length - 1; i > -1; i--) {
-                var unityPackage = unityPackages[i];
-                if (
-                    unityPackage.platform === 'standalonewindows' &&
-                    this.compareUnityVersion(unityPackage.unitySortNumber)
-                ) {
-                    assetUrl = unityPackage.assetUrl;
-                    break;
-                }
-            }
-        } else if (this.worldDialog.visible && this.worldDialog.ref.assetUrl) {
-            assetUrl = this.worldDialog.ref.assetUrl;
-        }
-        if (!assetUrl) {
-            return null;
-        }
-        var fileId = $utils.extractFileId(assetUrl);
-        var fileVersion = parseInt($utils.extractFileVersion(assetUrl), 10);
-        var variantVersion = parseInt(
-            $utils.extractVariantVersion(assetUrl),
-            10
-        );
-        var assetLocation = await AssetBundleManager.GetVRChatCacheFullLocation(
-            fileId,
-            fileVersion,
-            variant,
-            variantVersion
-        );
-        var cacheInfo = await AssetBundleManager.CheckVRChatCache(
-            fileId,
-            fileVersion,
-            variant,
-            variantVersion
-        );
-        var inCache = false;
-        if (cacheInfo.Item1 > 0) {
-            inCache = true;
-        }
-        console.log(`InCache: ${inCache}`);
-        var fullAssetLocation = `${assetLocation}\\__data`;
-        console.log(fullAssetLocation);
-        return fullAssetLocation;
     };
 
     // Parse User URL
@@ -15071,149 +10684,7 @@ console.log(`isLinux: ${LINUX}`);
         return void 0;
     };
 
-    // Parse Avatar URL
-
-    $app.methods.parseAvatarUrl = function (avatar) {
-        var url = new URL(avatar);
-        var urlPath = url.pathname;
-        if (urlPath.substring(5, 13) === '/avatar/') {
-            var avatarId = urlPath.substring(13);
-            return avatarId;
-        }
-        return void 0;
-    };
-
-    // userDialog Favorite Worlds
-
-    $app.data.userFavoriteWorlds = [];
-
-    $app.methods.getUserFavoriteWorlds = async function (userId) {
-        this.userDialog.isFavoriteWorldsLoading = true;
-        if (typeof this.$refs.favoriteWorlds !== 'undefined') {
-            this.$refs.favoriteWorlds.currentName = '0'; // select first tab
-        }
-        this.userFavoriteWorlds = [];
-        var worldLists = [];
-        var params = {
-            ownerId: userId,
-            n: 100
-        };
-        var json = await API.call('favorite/groups', {
-            method: 'GET',
-            params
-        });
-        for (var i = 0; i < json.length; ++i) {
-            var list = json[i];
-            if (list.type !== 'world') {
-                continue;
-            }
-            var params = {
-                n: 100,
-                offset: 0,
-                userId,
-                tag: list.name
-            };
-            try {
-                var args = await favoriteRequest.getFavoriteWorlds(params);
-                worldLists.push([list.displayName, list.visibility, args.json]);
-            } catch (err) {}
-        }
-        this.userFavoriteWorlds = worldLists;
-        this.userDialog.isFavoriteWorldsLoading = false;
-    };
-
-    $app.methods.userFavoriteWorldsStatus = function (visibility) {
-        var style = {};
-        if (visibility === 'public') {
-            style.green = true;
-        } else if (visibility === 'friends') {
-            style.blue = true;
-        } else {
-            style.red = true;
-        }
-        return style;
-    };
-
-    $app.methods.refreshInstancePlayerCount = function (instance) {
-        var L = $utils.parseLocation(instance);
-        if (L.isRealInstance) {
-            instanceRequest.getInstance({
-                worldId: L.worldId,
-                instanceId: L.instanceId
-            });
-        }
-    };
-
     // userDialog Groups
-
-    $app.data.userGroups = {
-        groups: [],
-        ownGroups: [],
-        mutualGroups: [],
-        remainingGroups: []
-    };
-
-    $app.methods.getUserGroups = async function (userId) {
-        this.userDialog.isGroupsLoading = true;
-        this.userGroups = {
-            groups: [],
-            ownGroups: [],
-            mutualGroups: [],
-            remainingGroups: []
-        };
-        var args = await API.getGroups({ userId });
-        if (userId !== this.userDialog.id) {
-            this.userDialog.isGroupsLoading = false;
-            return;
-        }
-        if (userId === API.currentUser.id) {
-            // update current user groups
-            API.currentUserGroups.clear();
-            args.json.forEach((group) => {
-                var ref = API.applyGroup(group);
-                if (!API.currentUserGroups.has(group.id)) {
-                    API.currentUserGroups.set(group.id, ref);
-                }
-            });
-            this.saveCurrentUserGroups();
-        }
-        this.userGroups.groups = args.json;
-        for (var i = 0; i < args.json.length; ++i) {
-            var group = args.json[i];
-            if (!group?.id) {
-                console.error('getUserGroups, group ID is missing', group);
-                continue;
-            }
-            if (group.ownerId === userId) {
-                this.userGroups.ownGroups.unshift(group);
-            }
-            if (userId === API.currentUser.id) {
-                // skip mutual groups for current user
-                if (group.ownerId !== userId) {
-                    this.userGroups.remainingGroups.unshift(group);
-                }
-                continue;
-            }
-            if (group.mutualGroup) {
-                this.userGroups.mutualGroups.unshift(group);
-            }
-            if (!group.mutualGroup && group.ownerId !== userId) {
-                this.userGroups.remainingGroups.unshift(group);
-            }
-        }
-        if (userId === API.currentUser.id) {
-            this.userDialog.groupSorting =
-                this.userDialogGroupSortingOptions.inGame;
-        } else if (
-            this.userDialog.groupSorting ===
-            this.userDialogGroupSortingOptions.inGame
-        ) {
-            this.userDialog.groupSorting =
-                this.userDialogGroupSortingOptions.alphabetical;
-        }
-        await this.sortCurrentUserGroups();
-        this.userDialog.isGroupsLoading = false;
-    };
 
     $app.data.inGameGroupOrder = [];
 
@@ -15239,21 +10710,6 @@ console.log(`isLinux: ${LINUX}`);
         }
     };
 
-    $app.methods.sortGroupsByInGame = function (a, b) {
-        var aIndex = this.inGameGroupOrder.indexOf(a?.id);
-        var bIndex = this.inGameGroupOrder.indexOf(b?.id);
-        if (aIndex === -1 && bIndex === -1) {
-            return 0;
-        }
-        if (aIndex === -1) {
-            return 1;
-        }
-        if (bIndex === -1) {
-            return -1;
-        }
-        return aIndex - bIndex;
-    };
-
     $app.methods.sortGroupInstancesByInGame = function (a, b) {
         var aIndex = this.inGameGroupOrder.indexOf(a?.group?.id);
         var bIndex = this.inGameGroupOrder.indexOf(b?.group?.id);
@@ -15267,99 +10723,6 @@ console.log(`isLinux: ${LINUX}`);
             return -1;
         }
         return aIndex - bIndex;
-    };
-
-    $app.methods.sortCurrentUserGroups = async function () {
-        var D = this.userDialog;
-        var sortMethod = function () {};
-
-        switch (D.groupSorting.value) {
-            case 'alphabetical':
-                sortMethod = compareByName;
-                break;
-            case 'members':
-                sortMethod = compareByMemberCount;
-                break;
-            case 'inGame':
-                sortMethod = this.sortGroupsByInGame;
-                await this.updateInGameGroupOrder();
-                break;
-        }
-
-        this.userGroups.ownGroups.sort(sortMethod);
-        this.userGroups.mutualGroups.sort(sortMethod);
-        this.userGroups.remainingGroups.sort(sortMethod);
-    };
-
-    $app.data.userDialogGroupEditMode = false;
-    $app.data.userDialogGroupEditGroups = [];
-
-    $app.methods.editModeCurrentUserGroups = async function () {
-        await this.updateInGameGroupOrder();
-        this.userDialogGroupEditGroups = Array.from(
-            API.currentUserGroups.values()
-        );
-        this.userDialogGroupEditGroups.sort(this.sortGroupsByInGame);
-        this.userDialogGroupEditMode = true;
-    };
-
-    $app.methods.exitEditModeCurrentUserGroups = async function () {
-        this.userDialogGroupEditMode = false;
-        this.userDialogGroupEditGroups = [];
-        await this.sortCurrentUserGroups();
-    };
-
-    $app.methods.moveGroupUp = function (groupId) {
-        var index = this.inGameGroupOrder.indexOf(groupId);
-        if (index > 0) {
-            this.inGameGroupOrder.splice(index, 1);
-            this.inGameGroupOrder.splice(index - 1, 0, groupId);
-            this.saveInGameGroupOrder();
-        }
-    };
-
-    $app.methods.moveGroupDown = function (groupId) {
-        var index = this.inGameGroupOrder.indexOf(groupId);
-        if (index < this.inGameGroupOrder.length - 1) {
-            this.inGameGroupOrder.splice(index, 1);
-            this.inGameGroupOrder.splice(index + 1, 0, groupId);
-            this.saveInGameGroupOrder();
-        }
-    };
-
-    $app.methods.moveGroupTop = function (groupId) {
-        var index = this.inGameGroupOrder.indexOf(groupId);
-        if (index > 0) {
-            this.inGameGroupOrder.splice(index, 1);
-            this.inGameGroupOrder.unshift(groupId);
-            this.saveInGameGroupOrder();
-        }
-    };
-
-    $app.methods.moveGroupBottom = function (groupId) {
-        var index = this.inGameGroupOrder.indexOf(groupId);
-        if (index < this.inGameGroupOrder.length - 1) {
-            this.inGameGroupOrder.splice(index, 1);
-            this.inGameGroupOrder.push(groupId);
-            this.saveInGameGroupOrder();
-        }
-    };
-
-    $app.methods.saveInGameGroupOrder = async function () {
-        this.userDialogGroupEditGroups.sort(this.sortGroupsByInGame);
-        try {
-            await AppApi.SetVRChatRegistryKey(
-                `VRC_GROUP_ORDER_${API.currentUser.id}`,
-                JSON.stringify(this.inGameGroupOrder),
-                3
-            );
-        } catch (err) {
-            console.error(err);
-            this.$message({
-                message: 'Failed to save in-game group order',
-                type: 'error'
-            });
-        }
     };
 
     // #endregion
@@ -15378,7 +10741,6 @@ console.log(`isLinux: ${LINUX}`);
     });
 
     $app.methods.showGalleryDialog = function (pageNum) {
-        this.$nextTick(() => $app.adjustDialogZ(this.$refs.galleryDialog.$el));
         this.galleryDialogVisible = true;
         this.refreshGalleryTable();
         this.refreshVRCPlusIconsTable();
@@ -15413,106 +10775,6 @@ console.log(`isLinux: ${LINUX}`);
         }
     });
 
-    $app.methods.setProfilePicOverride = function (fileId) {
-        if (!API.currentUser.$isVRCPlus) {
-            this.$message({
-                message: 'VRCPlus required',
-                type: 'error'
-            });
-            return;
-        }
-        var profilePicOverride = '';
-        if (fileId) {
-            profilePicOverride = `${API.endpointDomain}/file/${fileId}/1`;
-        }
-        if (profilePicOverride === API.currentUser.profilePicOverride) {
-            return;
-        }
-        API.saveCurrentUser({
-            profilePicOverride
-        }).then((args) => {
-            this.$message({
-                message: 'Profile picture changed',
-                type: 'success'
-            });
-            return args;
-        });
-    };
-
-    $app.methods.deleteGalleryImage = function (fileId) {
-        vrcPlusIconRequest.deleteFile(fileId).then((args) => {
-            API.$emit('GALLERYIMAGE:DELETE', args);
-            return args;
-        });
-    };
-
-    API.$on('GALLERYIMAGE:DELETE', function (args) {
-        var array = $app.galleryTable;
-        var { length } = array;
-        for (var i = 0; i < length; ++i) {
-            if (args.fileId === array[i].id) {
-                array.splice(i, 1);
-                break;
-            }
-        }
-    });
-
-    $app.methods.compareCurrentProfilePic = function (fileId) {
-        var currentProfilePicOverride = $utils.extractFileId(
-            API.currentUser.profilePicOverride
-        );
-        if (fileId === currentProfilePicOverride) {
-            return true;
-        }
-        return false;
-    };
-
-    $app.methods.onFileChangeGallery = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#GalleryUploadButton')) {
-                document.querySelector('#GalleryUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (!files.length) {
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        var r = new FileReader();
-        r.onload = function () {
-            var base64Body = btoa(r.result);
-            vrcPlusImageRequest.uploadGalleryImage(base64Body).then((args) => {
-                $app.$message({
-                    message: $t('message.gallery.uploaded'),
-                    type: 'success'
-                });
-                return args;
-            });
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
-
-    $app.methods.displayGalleryUpload = function () {
-        document.getElementById('GalleryUploadButton').click();
-    };
-
     API.$on('GALLERYIMAGE:ADD', function (args) {
         if (Object.keys($app.galleryTable).length !== 0) {
             $app.galleryTable.unshift(args.json);
@@ -15540,72 +10802,6 @@ console.log(`isLinux: ${LINUX}`);
             $app.galleryDialogStickersLoading = false;
         }
     });
-
-    $app.methods.deleteSticker = function (fileId) {
-        vrcPlusIconRequest.deleteFile(fileId).then((args) => {
-            API.$emit('STICKER:DELETE', args);
-            return args;
-        });
-    };
-
-    API.$on('STICKER:DELETE', function (args) {
-        var array = $app.stickerTable;
-        var { length } = array;
-        for (var i = 0; i < length; ++i) {
-            if (args.fileId === array[i].id) {
-                array.splice(i, 1);
-                break;
-            }
-        }
-    });
-
-    $app.methods.onFileChangeSticker = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#StickerUploadButton')) {
-                document.querySelector('#StickerUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (!files.length) {
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        var r = new FileReader();
-        r.onload = function () {
-            var params = {
-                tag: 'sticker',
-                maskTag: 'square'
-            };
-            var base64Body = btoa(r.result);
-            vrcPlusImageRequest
-                .uploadSticker(base64Body, params)
-                .then((args) => {
-                    $app.$message({
-                        message: $t('message.sticker.uploaded'),
-                        type: 'success'
-                    });
-                    return args;
-                });
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
 
     $app.methods.displayStickerUpload = function () {
         document.getElementById('StickerUploadButton').click();
@@ -15707,87 +10903,8 @@ console.log(`isLinux: ${LINUX}`);
         $app.galleryDialogPrintsLoading = false;
     });
 
-    $app.methods.deletePrint = function (printId) {
-        vrcPlusImageRequest.deletePrint(printId);
-    };
-
-    API.$on('PRINT:DELETE', function (args) {
-        var array = $app.printTable;
-        var { length } = array;
-        for (var i = 0; i < length; ++i) {
-            if (args.printId === array[i].id) {
-                array.splice(i, 1);
-                break;
-            }
-        }
-    });
-
     $app.data.printUploadNote = '';
     $app.data.printCropBorder = true;
-
-    $app.methods.onFileChangePrint = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#PrintUploadButton')) {
-                document.querySelector('#PrintUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (!files.length) {
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        var r = new FileReader();
-        r.onload = function () {
-            var date = new Date();
-            // why the fuck isn't this UTC
-            date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-            var timestamp = date.toISOString().slice(0, 19);
-            var params = {
-                note: $app.printUploadNote,
-                // worldId: '',
-                timestamp
-            };
-            var base64Body = btoa(r.result);
-            var cropWhiteBorder = $app.printCropBorder;
-            vrcPlusImageRequest
-                .uploadPrint(base64Body, cropWhiteBorder, params)
-                .then((args) => {
-                    $app.$message({
-                        message: $t('message.print.uploaded'),
-                        type: 'success'
-                    });
-                    return args;
-                });
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
-
-    $app.methods.displayPrintUpload = function () {
-        document.getElementById('PrintUploadButton').click();
-    };
-
-    API.$on('PRINT:ADD', function (args) {
-        if (Object.keys($app.printTable).length !== 0) {
-            $app.printTable.unshift(args.json);
-        }
-    });
 
     $app.data.saveInstancePrints = await configRepository.getBool(
         'VRCX_saveInstancePrints',
@@ -15803,41 +10920,6 @@ console.log(`isLinux: ${LINUX}`);
         'VRCX_saveInstanceStickers',
         false
     );
-
-    $app.methods.getPrintLocalDate = function (print) {
-        if (print.createdAt) {
-            var createdAt = new Date(print.createdAt);
-            // cursed convert to local time
-            createdAt.setMinutes(
-                createdAt.getMinutes() - createdAt.getTimezoneOffset()
-            );
-            return createdAt;
-        }
-        if (print.timestamp) {
-            var createdAt = new Date(print.timestamp);
-            return createdAt;
-        }
-
-        var createdAt = new Date();
-        // cursed convert to local time
-        createdAt.setMinutes(
-            createdAt.getMinutes() - createdAt.getTimezoneOffset()
-        );
-        return createdAt;
-    };
-
-    $app.methods.getPrintFileName = function (print) {
-        var authorName = print.authorName;
-        // fileDate format: 2024-11-03_16-14-25.757
-        var createdAt = this.getPrintLocalDate(print);
-        var fileNameDate = createdAt
-            .toISOString()
-            .replace(/:/g, '-')
-            .replace(/T/g, '_')
-            .replace(/Z/g, '');
-        var fileName = `${authorName}_${fileNameDate}_${print.id}.png`;
-        return fileName;
-    };
 
     $app.data.printCache = [];
     $app.data.printQueue = [];
@@ -15872,7 +10954,7 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
         var print = args.json;
-        var createdAt = this.getPrintLocalDate(print);
+        var createdAt = getPrintLocalDate(print);
         try {
             var owner = await userRequest.getCachedUser({
                 userId: print.ownerId
@@ -15884,7 +10966,7 @@ console.log(`isLinux: ${LINUX}`);
             console.error(err);
         }
         var monthFolder = createdAt.toISOString().slice(0, 7);
-        var fileName = this.getPrintFileName(print);
+        var fileName = getPrintFileName(print);
         var filePath = await AppApi.SavePrintToFile(
             imageUrl,
             this.ugcFolderPath,
@@ -15929,230 +11011,14 @@ console.log(`isLinux: ${LINUX}`);
         }
     });
 
-    $app.methods.deleteEmoji = function (fileId) {
-        vrcPlusIconRequest.deleteFile(fileId).then((args) => {
-            API.$emit('EMOJI:DELETE', args);
-            return args;
-        });
-    };
-
-    API.$on('EMOJI:DELETE', function (args) {
-        var array = $app.emojiTable;
-        var { length } = array;
-        for (var i = 0; i < length; ++i) {
-            if (args.fileId === array[i].id) {
-                array.splice(i, 1);
-                break;
-            }
-        }
-    });
-
-    $app.methods.onFileChangeEmoji = function (e) {
-        var clearFile = function () {
-            if (document.querySelector('#EmojiUploadButton')) {
-                document.querySelector('#EmojiUploadButton').value = '';
-            }
-        };
-        var files = e.target.files || e.dataTransfer.files;
-        if (!files.length) {
-            return;
-        }
-        if (files[0].size >= 100000000) {
-            // 100MB
-            $app.$message({
-                message: $t('message.file.too_large'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        if (!files[0].type.match(/image.*/)) {
-            $app.$message({
-                message: $t('message.file.not_image'),
-                type: 'error'
-            });
-            clearFile();
-            return;
-        }
-        // set Emoji settings from fileName
-        this.parseEmojiFileName(files[0].name);
-        var r = new FileReader();
-        r.onload = function () {
-            var params = {
-                tag: $app.emojiAnimType ? 'emojianimated' : 'emoji',
-                animationStyle: $app.emojiAnimationStyle.toLowerCase(),
-                maskTag: 'square'
-            };
-            if ($app.emojiAnimType) {
-                params.frames = $app.emojiAnimFrameCount;
-                params.framesOverTime = $app.emojiAnimFps;
-            }
-            if ($app.emojiAnimLoopPingPong) {
-                params.loopStyle = 'pingpong';
-            }
-            var base64Body = btoa(r.result);
-            vrcPlusImageRequest.uploadEmoji(base64Body, params).then((args) => {
-                $app.$message({
-                    message: $t('message.emoji.uploaded'),
-                    type: 'success'
-                });
-                return args;
-            });
-        };
-        r.readAsBinaryString(files[0]);
-        clearFile();
-    };
-
-    $app.methods.displayEmojiUpload = function () {
-        document.getElementById('EmojiUploadButton').click();
-    };
-
     API.$on('EMOJI:ADD', function (args) {
         if (Object.keys($app.emojiTable).length !== 0) {
             $app.emojiTable.unshift(args.json);
         }
     });
 
-    $app.data.emojiAnimFps = 15;
-    $app.data.emojiAnimFrameCount = 4;
-    $app.data.emojiAnimType = false;
-    $app.data.emojiAnimationStyle = 'Stop';
-    $app.data.emojiAnimLoopPingPong = false;
-    $app.data.emojiAnimationStyleUrl =
-        'https://assets.vrchat.com/www/images/emoji-previews/';
-    $app.data.emojiAnimationStyleList = {
-        Aura: 'Preview_B2-Aura.gif',
-        Bats: 'Preview_B2-Fall_Bats.gif',
-        Bees: 'Preview_B2-Bees.gif',
-        Bounce: 'Preview_B2-Bounce.gif',
-        Cloud: 'Preview_B2-Cloud.gif',
-        Confetti: 'Preview_B2-Winter_Confetti.gif',
-        Crying: 'Preview_B2-Crying.gif',
-        Dislike: 'Preview_B2-Dislike.gif',
-        Fire: 'Preview_B2-Fire.gif',
-        Idea: 'Preview_B2-Idea.gif',
-        Lasers: 'Preview_B2-Lasers.gif',
-        Like: 'Preview_B2-Like.gif',
-        Magnet: 'Preview_B2-Magnet.gif',
-        Mistletoe: 'Preview_B2-Winter_Mistletoe.gif',
-        Money: 'Preview_B2-Money.gif',
-        Noise: 'Preview_B2-Noise.gif',
-        Orbit: 'Preview_B2-Orbit.gif',
-        Pizza: 'Preview_B2-Pizza.gif',
-        Rain: 'Preview_B2-Rain.gif',
-        Rotate: 'Preview_B2-Rotate.gif',
-        Shake: 'Preview_B2-Shake.gif',
-        Snow: 'Preview_B2-Spin.gif',
-        Snowball: 'Preview_B2-Winter_Snowball.gif',
-        Spin: 'Preview_B2-Spin.gif',
-        Splash: 'Preview_B2-SummerSplash.gif',
-        Stop: 'Preview_B2-Stop.gif',
-        ZZZ: 'Preview_B2-ZZZ.gif'
-    };
-
-    $app.methods.generateEmojiStyle = function (
-        url,
-        fps,
-        frameCount,
-        loopStyle
-    ) {
-        let framesPerLine = 2;
-        if (frameCount > 4) framesPerLine = 4;
-        if (frameCount > 16) framesPerLine = 8;
-        const animationDurationMs = (1000 / fps) * frameCount;
-        const frameSize = 1024 / framesPerLine;
-        const scale = 100 / (frameSize / 200);
-        const animStyle = loopStyle === 'pingpong' ? 'alternate' : 'none';
-        const style = `
-            transform: scale(${scale / 100});
-            transform-origin: top left;
-            width: ${frameSize}px;
-            height: ${frameSize}px;
-            background: url('${url}') 0 0;
-            animation: ${animationDurationMs}ms steps(1) 0s infinite ${animStyle} running animated-emoji-${frameCount};
-        `;
-        return style;
-    };
-
-    $app.methods.getEmojiFileName = function (emoji) {
-        if (emoji.frames) {
-            var loopStyle = emoji.loopStyle || 'linear';
-            return `${emoji.name}_${emoji.animationStyle}animationStyle_${emoji.frames}frames_${emoji.framesOverTime}fps_${loopStyle}loopStyle.png`;
-        } else {
-            return `${emoji.name}_${emoji.animationStyle}animationStyle.png`;
-        }
-    };
-
-    $app.methods.parseEmojiFileName = function (fileName) {
-        // remove file extension
-        fileName = fileName.replace(/\.[^/.]+$/, '');
-        var array = fileName.split('_');
-        for (var i = 0; i < array.length; ++i) {
-            var value = array[i];
-            if (value.endsWith('animationStyle')) {
-                this.emojiAnimType = false;
-                this.emojiAnimationStyle = value
-                    .replace('animationStyle', '')
-                    .toLowerCase();
-            }
-            if (value.endsWith('frames')) {
-                this.emojiAnimType = true;
-                this.emojiAnimFrameCount = parseInt(
-                    value.replace('frames', '')
-                );
-            }
-            if (value.endsWith('fps')) {
-                this.emojiAnimFps = parseInt(value.replace('fps', ''));
-            }
-            if (value.endsWith('loopStyle')) {
-                this.emojiAnimLoopPingPong = value === 'pingpong';
-            }
-        }
-    };
-
     // #endregion
     // #region Misc
-
-    $app.methods.replaceBioSymbols = function (text) {
-        if (!text) {
-            return '';
-        }
-        var symbolList = {
-            '@': '＠',
-            '#': '＃',
-            $: '＄',
-            '%': '％',
-            '&': '＆',
-            '=': '＝',
-            '+': '＋',
-            '/': '⁄',
-            '\\': '＼',
-            ';': ';',
-            ':': '˸',
-            ',': '‚',
-            '?': '？',
-            '!': 'ǃ',
-            '"': '＂',
-            '<': '≺',
-            '>': '≻',
-            '.': '․',
-            '^': '＾',
-            '{': '｛',
-            '}': '｝',
-            '[': '［',
-            ']': '］',
-            '(': '（',
-            ')': '）',
-            '|': '｜',
-            '*': '∗'
-        };
-        var newText = text;
-        for (var key in symbolList) {
-            var regex = new RegExp(symbolList[key], 'g');
-            newText = newText.replace(regex, key);
-        }
-        return newText.replace(/ {1,}/g, ' ').trimRight();
-    };
 
     $app.methods.removeEmojis = function (text) {
         if (!text) {
@@ -16168,7 +11034,7 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.checkCanInvite = function (location) {
-        var L = $utils.parseLocation(location);
+        var L = parseLocation(location);
         var instance = API.cachedInstances.get(location);
         if (instance?.closedAt) {
             return false;
@@ -16190,7 +11056,7 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.checkCanInviteSelf = function (location) {
-        var L = $utils.parseLocation(location);
+        var L = parseLocation(location);
         var instance = API.cachedInstances.get(location);
         if (instance?.closedAt) {
             return false;
@@ -16206,52 +11072,6 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.methods.setAsideWidth = async function () {
         await configRepository.setInt('VRCX_sidePanelWidth', this.asideWidth);
-    };
-
-    $app.methods.compareUnityVersion = function (unitySortNumber) {
-        if (!API.cachedConfig.sdkUnityVersion) {
-            console.error('No cachedConfig.sdkUnityVersion');
-            return false;
-        }
-
-        // 2022.3.6f1  2022 03 06 000
-        // 2019.4.31f1 2019 04 31 000
-        // 5.3.4p1     5    03 04 010
-        // 2019.4.31f1c1 is a thing
-        var array = API.cachedConfig.sdkUnityVersion.split('.');
-        if (array.length < 3) {
-            console.error('Invalid cachedConfig.sdkUnityVersion');
-            return false;
-        }
-        var currentUnityVersion = array[0];
-        currentUnityVersion += array[1].padStart(2, '0');
-        var indexFirstLetter = array[2].search(/[a-zA-Z]/);
-        if (indexFirstLetter > -1) {
-            currentUnityVersion += array[2]
-                .substr(0, indexFirstLetter)
-                .padStart(2, '0');
-            currentUnityVersion += '0';
-            var letter = array[2].substr(indexFirstLetter, 1);
-            if (letter === 'p') {
-                currentUnityVersion += '1';
-            } else {
-                // f
-                currentUnityVersion += '0';
-            }
-            currentUnityVersion += '0';
-        } else {
-            // just in case
-            currentUnityVersion += '000';
-        }
-        // just in case
-        currentUnityVersion = currentUnityVersion.replace(/\D/g, '');
-
-        if (
-            parseInt(unitySortNumber, 10) <= parseInt(currentUnityVersion, 10)
-        ) {
-            return true;
-        }
-        return false;
     };
 
     /**
@@ -16280,7 +11100,7 @@ console.log(`isLinux: ${LINUX}`);
             (this.displayVRCPlusIconsAsAvatar && user.userIcon)
         ) {
             if (isIcon) {
-                return $utils.convertFileUrlToImageUrl(user.userIcon);
+                return convertFileUrlToImageUrl(user.userIcon);
             }
             return user.userIcon;
         }
@@ -16311,9 +11131,7 @@ console.log(`isLinux: ${LINUX}`);
         }
         if (user.currentAvatarImageUrl) {
             if (isIcon) {
-                return $utils.convertFileUrlToImageUrl(
-                    user.currentAvatarImageUrl
-                );
+                return convertFileUrlToImageUrl(user.currentAvatarImageUrl);
             }
             return user.currentAvatarImageUrl;
         }
@@ -16745,52 +11563,15 @@ console.log(`isLinux: ${LINUX}`);
         }
     };
 
-    $app.methods.toggleAvatarCopying = function () {
-        API.saveCurrentUser({
-            allowAvatarCopying: !API.currentUser.allowAvatarCopying
-        }).then((args) => {
-            return args;
-        });
-    };
-
     $app.methods.toggleAllowBooping = function () {
-        API.saveCurrentUser({
-            isBoopingEnabled: !API.currentUser.isBoopingEnabled
-        }).then((args) => {
-            return args;
-        });
+        userRequest
+            .saveCurrentUser({
+                isBoopingEnabled: !API.currentUser.isBoopingEnabled
+            })
+            .then((args) => {
+                return args;
+            });
     };
-
-    // #endregion
-    // #region | App: Previous Instances User Dialog
-
-    $app.data.previousInstancesUserDialog = {
-        visible: false,
-        openFlg: false,
-        userRef: {}
-    };
-
-    $app.methods.showPreviousInstancesUserDialog = function (userRef) {
-        var D = this.previousInstancesUserDialog;
-        D.userRef = userRef;
-        D.visible = true;
-        // trigger watcher
-        D.openFlg = true;
-        this.$nextTick(() => (D.openFlg = false));
-    };
-
-    // no place use this
-    // $app.methods.getDisplayNameFromUserId = function (userId) {
-    //     var displayName = userId;
-    //     var ref = API.cachedUsers.get(userId);
-    //     if (
-    //         typeof ref !== 'undefined' &&
-    //         typeof ref.displayName !== 'undefined'
-    //     ) {
-    //         displayName = ref.displayName;
-    //     }
-    //     return displayName;
-    // };
 
     // #endregion
     // #region | App: Previous Instances Info Dialog
@@ -16915,28 +11696,6 @@ console.log(`isLinux: ${LINUX}`);
         this.loginForm.websocket = '';
     };
 
-    $app.data.mouseDownClass = [];
-    $app.data.mouseUpClass = [];
-    $app.methods.dialogMouseDown = function (e) {
-        this.mouseDownClass = [...e.target.classList];
-    };
-    $app.methods.dialogMouseUp = function (e) {
-        this.mouseUpClass = [...e.target.classList];
-    };
-    $app.methods.beforeDialogClose = function (done) {
-        if (
-            this.mouseDownClass.includes('el-dialog__wrapper') &&
-            this.mouseUpClass.includes('el-dialog__wrapper')
-        ) {
-            done();
-        } else if (
-            this.mouseDownClass.includes('el-dialog__close') &&
-            this.mouseUpClass.includes('el-dialog__close')
-        ) {
-            done();
-        }
-    };
-
     $app.methods.getNameColour = async function (userId) {
         var hue = await AppApi.GetColourFromUserID(userId);
         return this.HueToHex(hue);
@@ -17018,23 +11777,6 @@ console.log(`isLinux: ${LINUX}`);
         return `#${decColor.toString(16).substr(1)}`;
     };
 
-    $app.methods.isFriendOnline = function (friend) {
-        if (
-            typeof friend === 'undefined' ||
-            typeof friend.ref === 'undefined'
-        ) {
-            return false;
-        }
-        if (friend.state === 'online') {
-            return true;
-        }
-        if (friend.state !== 'online' && friend.ref.location !== 'private') {
-            // wat
-            return true;
-        }
-        return false;
-    };
-
     $app.methods.onPlayerTraveling = function (ref) {
         if (
             !this.isGameRunning ||
@@ -17063,7 +11805,7 @@ console.log(`isLinux: ${LINUX}`);
 
         // update cached user with both gameLog and API locations
         var currentLocation = API.currentUser.$locationTag;
-        var L = $utils.parseLocation(currentLocation);
+        var L = parseLocation(currentLocation);
         if (L.isTraveling) {
             currentLocation = API.currentUser.$travelingToLocation;
         }
@@ -17086,7 +11828,7 @@ console.log(`isLinux: ${LINUX}`);
 
         ref.$online_for = API.currentUser.$online_for;
         ref.$offline_for = API.currentUser.$offline_for;
-        ref.$location = $utils.parseLocation(currentLocation);
+        ref.$location = parseLocation(currentLocation);
         if (!this.isGameRunning || this.gameLogDisabled) {
             ref.$location_at = API.currentUser.$location_at;
             ref.$travelingToTime = API.currentUser.$travelingToTime;
@@ -17129,9 +11871,9 @@ console.log(`isLinux: ${LINUX}`);
         this.lastLocationDestination = '';
         this.lastLocationDestinationTime = 0;
 
-        if ($utils.isRealInstance(location)) {
+        if (isRealInstance(location)) {
             var dt = new Date().toJSON();
-            var L = $utils.parseLocation(location);
+            var L = parseLocation(location);
 
             this.lastLocation.location = location;
             this.lastLocation.date = dt;
@@ -17314,153 +12056,12 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     // #endregion
-    // #region | App: user dialog notes
-
-    API.$on('NOTE', function (args) {
-        var note = '';
-        var targetUserId = '';
-        if (typeof args.json !== 'undefined') {
-            note = $app.replaceBioSymbols(args.json.note);
-        }
-        if (typeof args.params !== 'undefined') {
-            targetUserId = args.params.targetUserId;
-        }
-        if (targetUserId === $app.userDialog.id) {
-            if (note === args.params.note) {
-                $app.userDialog.noteSaving = false;
-                $app.userDialog.note = note;
-            } else {
-                // response is cached sadge :<
-                userRequest.getUser({ userId: targetUserId });
-            }
-        }
-        var ref = API.cachedUsers.get(targetUserId);
-        if (typeof ref !== 'undefined') {
-            ref.note = note;
-        }
-    });
-
-    $app.methods.checkNote = function (ref, note) {
-        if (ref.note !== note) {
-            this.addNote(ref.id, note);
-        }
-    };
-
-    $app.methods.cleanNote = function (note) {
-        // remove newlines because they aren't supported
-        $app.userDialog.note = note.replace(/[\r\n]/g, '');
-    };
-
-    $app.methods.addNote = function (userId, note) {
-        if (this.userDialog.id === userId) {
-            this.userDialog.noteSaving = true;
-        }
-        return miscRequest.saveNote({
-            targetUserId: userId,
-            note
-        });
-    };
-
-    $app.methods.deleteNote = function (userId) {
-        if (this.userDialog.id === userId) {
-            this.userDialog.noteSaving = true;
-        }
-        return miscRequest.saveNote({
-            targetUserId: userId,
-            note: ''
-        });
-    };
-
-    // #endregion
     // #region | App: note export
 
-    $app.data.noteExportDialog = {
-        visible: false,
-        loading: false,
-        progress: 0,
-        progressTotal: 0,
-        errors: ''
-    };
-    $app.data.noteExportTable = {
-        data: [],
-        tableProps: {
-            stripe: true,
-            size: 'mini'
-        },
-        layout: 'table'
-    };
-
-    API.$on('LOGIN', function () {
-        $app.noteExportTable.data = [];
-        $app.noteExportDialog.visible = false;
-        $app.noteExportDialog.loading = false;
-        $app.noteExportDialog.progress = 0;
-        $app.noteExportDialog.progressTotal = 0;
-        $app.noteExportDialog.errors = '';
-    });
+    $app.data.isNoteExportDialogVisible = false;
 
     $app.methods.showNoteExportDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.noteExportDialog.$el)
-        );
-        var D = this.noteExportDialog;
-        D.progress = 0;
-        D.progressTotal = 0;
-        D.loading = false;
-        D.visible = true;
-    };
-
-    $app.methods.updateNoteExportDialog = function () {
-        var data = [];
-        this.friends.forEach((ctx) => {
-            var newMemo = ctx.memo.replace(/[\r\n]/g, ' ');
-            if (ctx.memo && ctx.ref && ctx.ref.note !== newMemo.slice(0, 256)) {
-                data.push({
-                    id: ctx.id,
-                    name: ctx.name,
-                    memo: newMemo,
-                    ref: ctx.ref
-                });
-            }
-        });
-        this.noteExportTable.data = data;
-    };
-
-    $app.methods.removeFromNoteExportTable = function (ref) {
-        $app.removeFromArray(this.noteExportTable.data, ref);
-    };
-
-    $app.methods.exportNoteExport = async function () {
-        var D = this.noteExportDialog;
-        D.loading = true;
-        var data = [...this.noteExportTable.data].reverse();
-        D.progressTotal = data.length;
-        try {
-            for (var i = data.length - 1; i >= 0; i--) {
-                if (D.visible && D.loading) {
-                    var ctx = data[i];
-                    await miscRequest.saveNote({
-                        targetUserId: ctx.id,
-                        note: ctx.memo.slice(0, 256)
-                    });
-                    $app.removeFromArray(this.noteExportTable.data, ctx);
-                    D.progress++;
-                    await new Promise((resolve) => {
-                        workerTimers.setTimeout(resolve, 5000);
-                    });
-                }
-            }
-        } catch (err) {
-            D.errors = `Name: ${ctx.name}\n${err}\n\n`;
-        } finally {
-            D.progress = 0;
-            D.progressTotal = 0;
-            D.loading = false;
-        }
-    };
-
-    $app.methods.cancelNoteExport = function () {
-        this.noteExportDialog.loading = false;
+        this.isNoteExportDialogVisible = true;
     };
 
     // user generated content
@@ -17512,16 +12113,10 @@ console.log(`isLinux: ${LINUX}`);
 
     // avatar database provider
 
-    $app.data.avatarProviderDialog = {
-        visible: false
-    };
+    $app.data.isAvatarProviderDialogVisible = false;
 
     $app.methods.showAvatarProviderDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.avatarProviderDialog.$el)
-        );
-        var D = this.avatarProviderDialog;
-        D.visible = true;
+        this.isAvatarProviderDialogVisible = true;
     };
 
     $app.methods.addAvatarProvider = function (url) {
@@ -17818,7 +12413,7 @@ console.log(`isLinux: ${LINUX}`);
             for (var i = 0; i < this.localWorldFavoriteGroups.length; ++i) {
                 var group = this.localWorldFavoriteGroups[i];
                 if (this.localWorldFavorites[group]) {
-                    this.localWorldFavorites[group].sort(compareByName);
+                    this.localWorldFavorites[group].sort($utils.compareByName);
                 }
             }
         }
@@ -18149,7 +12744,7 @@ console.log(`isLinux: ${LINUX}`);
             for (var i = 0; i < this.localAvatarFavoriteGroups.length; ++i) {
                 var group = this.localAvatarFavoriteGroups[i];
                 if (this.localAvatarFavorites[group]) {
-                    this.localAvatarFavorites[group].sort(compareByName);
+                    this.localAvatarFavorites[group].sort($utils.compareByName);
                 }
             }
         }
@@ -18275,44 +12870,6 @@ console.log(`isLinux: ${LINUX}`);
 
     // #endregion
     // #region | App: ChatBox Blacklist
-    $app.data.chatboxBlacklist = [
-        'NP: ',
-        'Now Playing',
-        'Now playing',
-        "▶️ '",
-        '( ▶️ ',
-        "' - '",
-        "' by '",
-        '[Spotify] '
-    ];
-    if (await configRepository.getString('VRCX_chatboxBlacklist')) {
-        $app.data.chatboxBlacklist = JSON.parse(
-            await configRepository.getString('VRCX_chatboxBlacklist')
-        );
-    }
-    $app.data.chatboxBlacklistDialog = {
-        visible: false,
-        loading: false
-    };
-
-    API.$on('LOGOUT', function () {
-        $app.chatboxBlacklistDialog.visible = false;
-    });
-
-    $app.methods.saveChatboxBlacklist = async function () {
-        await configRepository.setString(
-            'VRCX_chatboxBlacklist',
-            JSON.stringify(this.chatboxBlacklist)
-        );
-    };
-
-    $app.methods.showChatboxBlacklistDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.chatboxBlacklistDialog.$el)
-        );
-        var D = this.chatboxBlacklistDialog;
-        D.visible = true;
-    };
 
     $app.methods.checkChatboxBlacklist = function (msg) {
         for (var i = 0; i < this.chatboxBlacklist.length; ++i) {
@@ -18350,21 +12907,6 @@ console.log(`isLinux: ${LINUX}`);
         await configRepository.setString(
             'VRCX_chatboxUserBlacklist',
             JSON.stringify(Object.fromEntries(this.chatboxUserBlacklist))
-        );
-    };
-
-    $app.methods.addChatboxUserBlacklist = async function (user) {
-        this.chatboxUserBlacklist.set(user.id, user.displayName);
-        await this.saveChatboxUserBlacklist();
-        this.getCurrentInstanceUserList();
-    };
-
-    $app.methods.deleteChatboxUserBlacklist = async function (userId) {
-        this.chatboxUserBlacklist.delete(userId);
-        await this.saveChatboxUserBlacklist();
-        this.getCurrentInstanceUserList();
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.chatboxBlacklistDialog.$el)
         );
     };
 
@@ -18409,7 +12951,7 @@ console.log(`isLinux: ${LINUX}`);
             return;
         }
         if (!API.queuedInstances.has(instanceId)) {
-            var L = $utils.parseLocation(instanceId);
+            var L = parseLocation(instanceId);
             if (L.isRealInstance) {
                 instanceRequest
                     .getInstance({
@@ -18436,24 +12978,20 @@ console.log(`isLinux: ${LINUX}`);
             ref.$msgBox.close();
             API.queuedInstances.delete(instanceId);
         }
-        var L = $utils.parseLocation(instanceId);
+        var L = parseLocation(instanceId);
         var group = API.cachedGroups.get(L.groupId);
         var groupName = group?.name ?? '';
         var worldName = ref?.$worldName ?? '';
-        var displayLocation = $app.displayLocation(
-            instanceId,
-            worldName,
-            groupName
-        );
+        const location = displayLocation(instanceId, worldName, groupName);
         this.$message({
-            message: `Instance ready to join ${displayLocation}`,
+            message: `Instance ready to join ${location}`,
             type: 'success'
         });
         var noty = {
             created_at: new Date().toJSON(),
             type: 'group.queueReady',
             imageUrl: group?.iconUrl,
-            message: `Instance ready to join ${displayLocation}`,
+            message: `Instance ready to join ${location}`,
             location: instanceId,
             groupName,
             worldName
@@ -18504,12 +13042,12 @@ console.log(`isLinux: ${LINUX}`);
         if (!ref.$worldName) {
             ref.$worldName = await this.getWorldName(instanceId);
         }
-        var displayLocation = this.displayLocation(
+        const location = displayLocation(
             instanceId,
             ref.$worldName,
             ref.$groupName
         );
-        ref.$msgBox.message = `You are in position ${ref.position} of ${ref.queueSize} in the queue for ${displayLocation} `;
+        ref.$msgBox.message = `You are in position ${ref.position} of ${ref.queueSize} in the queue for ${location} `;
         API.queuedInstances.set(instanceId, ref);
         // workerTimers.setTimeout(this.instanceQueueTimeout, 3600000);
     };
@@ -18523,46 +13061,6 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     // #endregion
-
-    $app.methods.sendNotificationResponse = function (
-        notificationId,
-        responses,
-        responseType
-    ) {
-        if (!Array.isArray(responses) || responses.length === 0) {
-            return null;
-        }
-        var responseData = '';
-        for (var i = 0; i < responses.length; i++) {
-            if (responses[i].type === responseType) {
-                responseData = responses[i].data;
-                break;
-            }
-        }
-        return notificationRequest.sendNotificationResponse({
-            notificationId,
-            responseType,
-            responseData
-        });
-    };
-
-    $app.methods.openNotificationLink = function (link) {
-        if (!link) {
-            return;
-        }
-        var data = link.split(':');
-        if (!data.length) {
-            return;
-        }
-        switch (data[0]) {
-            case 'group':
-                this.showGroupDialog(data[1]);
-                break;
-            case 'user':
-                this.showUserDialog(data[1]);
-                break;
-        }
-    };
 
     $app.methods.checkVRChatDebugLogging = async function () {
         if (this.gameLogDisabled) {
@@ -18606,100 +13104,11 @@ console.log(`isLinux: ${LINUX}`);
         }
     };
 
-    $app.methods.downloadAndSaveImage = async function (url, fileName) {
-        if (!url) {
-            return;
-        }
-        this.$message({
-            message: 'Downloading image...',
-            type: 'info'
-        });
-        try {
-            var response = await webApiService.execute({
-                url,
-                method: 'GET'
-            });
-            if (
-                response.status !== 200 ||
-                !response.data.startsWith('data:image/png')
-            ) {
-                throw new Error(`Error: ${response.data}`);
-            }
-            var link = document.createElement('a');
-            link.href = response.data;
-            var fileId = $utils.extractFileId(url);
-            if (!fileName && fileId) {
-                fileName = `${fileId}.png`;
-            }
-            if (!fileName) {
-                fileName = `${url.split('/').pop()}.png`;
-            }
-            if (!fileName) {
-                fileName = 'image.png';
-            }
-            link.setAttribute('download', fileName);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } catch {
-            new Noty({
-                type: 'error',
-                text: $app.escapeTag(`Failed to download image. ${url}`)
-            }).show();
-        }
-    };
-
-    $app.methods.downloadAndSaveJson = function (fileName, data) {
-        if (!fileName || !data) {
-            return;
-        }
-        try {
-            var link = document.createElement('a');
-            link.setAttribute(
-                'href',
-                `data:application/json;charset=utf-8,${encodeURIComponent(
-                    JSON.stringify(data, null, 2)
-                )}`
-            );
-            link.setAttribute('download', `${fileName}.json`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } catch {
-            new Noty({
-                type: 'error',
-                text: $app.escapeTag('Failed to download JSON.')
-            }).show();
-        }
-    };
-
-    $app.methods.setPlayerModeration = function (userId, type) {
-        var D = this.userDialog;
-        AppApi.SetVRChatUserModeration(API.currentUser.id, userId, type).then(
-            (result) => {
-                if (result) {
-                    if (type === 4) {
-                        D.isShowAvatar = false;
-                        D.isHideAvatar = true;
-                    } else if (type === 5) {
-                        D.isShowAvatar = true;
-                        D.isHideAvatar = false;
-                    } else {
-                        D.isShowAvatar = false;
-                        D.isHideAvatar = false;
-                    }
-                } else {
-                    $app.$message({
-                        message: $t('message.avatar.change_moderation_failed'),
-                        type: 'error'
-                    });
-                }
-            }
-        );
-    };
-
     // #endregion
     // #region | App: Language
+
+    $app.data.userDialogWorldSortingOptions = {};
+    $app.data.userDialogWorldOrderOptions = {};
 
     $app.methods.applyUserDialogSortingStrings = function () {
         this.userDialogWorldSortingOptions = {
@@ -18735,22 +13144,10 @@ console.log(`isLinux: ${LINUX}`);
                 value: 'ascending'
             }
         };
-
-        this.userDialogGroupSortingOptions = {
-            alphabetical: {
-                name: $t('dialog.user.groups.sorting.alphabetical'),
-                value: 'alphabetical'
-            },
-            members: {
-                name: $t('dialog.user.groups.sorting.members'),
-                value: 'members'
-            },
-            inGame: {
-                name: $t('dialog.user.groups.sorting.in_game'),
-                value: 'inGame'
-            }
-        };
     };
+
+    $app.data.groupDialogSortingOptions = {};
+    $app.data.groupDialogFilterOptions = {};
 
     $app.methods.applyGroupDialogSortingStrings = function () {
         this.groupDialogSortingOptions = {
@@ -18789,7 +13186,7 @@ console.log(`isLinux: ${LINUX}`);
         this.userDialog.worldOrder =
             this.userDialogWorldOrderOptions.descending;
         this.userDialog.groupSorting =
-            this.userDialogGroupSortingOptions.alphabetical;
+            userDialogGroupSortingOptions.alphabetical;
 
         this.groupDialog.memberFilter = this.groupDialogFilterOptions.everyone;
         this.groupDialog.memberSortOrder =
@@ -18833,15 +13230,6 @@ console.log(`isLinux: ${LINUX}`);
 
     // #endregion
     // #region | App: Random unsorted app methods, data structs, API functions, and an API feedback/file analysis event
-    API.$on('USER:FEEDBACK', function (args) {
-        if (args.params.userId === this.currentUser.id) {
-            $app.currentUserFeedbackData = $utils.buildTreeData(args.json);
-        }
-    });
-
-    $app.methods.getCurrentUserFeedback = function () {
-        return userRequest.getUserFeedback({ userId: API.currentUser.id });
-    };
 
     $app.data.changeLogDialog = {
         visible: false,
@@ -18850,126 +13238,12 @@ console.log(`isLinux: ${LINUX}`);
     };
 
     $app.methods.showChangeLogDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.changeLogDialog.$el)
-        );
         this.changeLogDialog.visible = true;
         this.checkForVRCXUpdate();
     };
 
-    $app.data.gallerySelectDialog = {
-        visible: false,
-        selectedFileId: '',
-        selectedImageUrl: ''
-    };
-
-    $app.methods.showGallerySelectDialog = function () {
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.gallerySelectDialog.$el)
-        );
-        var D = this.gallerySelectDialog;
-        D.visible = true;
-        this.refreshGalleryTable();
-    };
-
-    $app.methods.selectImageGallerySelect = function (imageUrl, fileId) {
-        var D = this.gallerySelectDialog;
-        D.selectedFileId = fileId;
-        D.selectedImageUrl = imageUrl;
-        D.visible = false;
-        console.log(imageUrl, fileId);
-    };
-
-    $app.methods.clearImageGallerySelect = function () {
-        var D = this.gallerySelectDialog;
-        D.selectedFileId = '';
-        D.selectedImageUrl = '';
-    };
-
-    $app.methods.reportUserForHacking = function (userId) {
-        miscRequest.reportUser({
-            userId,
-            contentType: 'user',
-            reason: 'behavior-hacking',
-            type: 'report'
-        });
-    };
-
     $app.methods.changeLogRemoveLinks = function (text) {
         return text.replace(/([^!])\[[^\]]+\]\([^)]+\)/g, '$1');
-    };
-
-    API.$on('FILE:ANALYSIS', function (args) {
-        if (
-            !$app.avatarDialog.visible ||
-            $app.avatarDialog.id !== args.params.avatarId
-        ) {
-            return;
-        }
-        var ref = args.json;
-        if (typeof ref.fileSize !== 'undefined') {
-            ref._fileSize = `${(ref.fileSize / 1048576).toFixed(2)} MB`;
-        }
-        if (typeof ref.uncompressedSize !== 'undefined') {
-            ref._uncompressedSize = `${(ref.uncompressedSize / 1048576).toFixed(
-                2
-            )} MB`;
-        }
-        if (typeof ref.avatarStats?.totalTextureUsage !== 'undefined') {
-            ref._totalTextureUsage = `${(
-                ref.avatarStats.totalTextureUsage / 1048576
-            ).toFixed(2)} MB`;
-        }
-        $app.avatarDialog.fileAnalysis = $utils.buildTreeData(args.json);
-    });
-
-    $app.methods.getAvatarFileAnalysis = function () {
-        var D = this.avatarDialog;
-        var avatarId = D.ref.id;
-        var assetUrl = '';
-        var variant = 'security';
-        for (let i = D.ref.unityPackages.length - 1; i > -1; i--) {
-            var unityPackage = D.ref.unityPackages[i];
-            if (unityPackage.variant !== 'security') {
-                continue;
-            }
-            if (
-                unityPackage.platform === 'standalonewindows' &&
-                this.compareUnityVersion(unityPackage.unitySortNumber)
-            ) {
-                assetUrl = unityPackage.assetUrl;
-                break;
-            }
-        }
-        if (!assetUrl) {
-            for (let i = D.ref.unityPackages.length - 1; i > -1; i--) {
-                var unityPackage = D.ref.unityPackages[i];
-                if (unityPackage.variant !== 'standard') {
-                    continue;
-                }
-                if (
-                    unityPackage.platform === 'standalonewindows' &&
-                    this.compareUnityVersion(unityPackage.unitySortNumber)
-                ) {
-                    variant = 'standard';
-                    assetUrl = unityPackage.assetUrl;
-                    break;
-                }
-            }
-        }
-        if (!assetUrl) {
-            assetUrl = D.ref.assetUrl;
-        }
-        var fileId = $utils.extractFileId(assetUrl);
-        var version = parseInt($utils.extractFileVersion(assetUrl), 10);
-        if (!fileId || !version) {
-            this.$message({
-                message: 'File Analysis unavailable',
-                type: 'error'
-            });
-            return;
-        }
-        miscRequest.getFileAnalysis({ fileId, version, variant, avatarId });
     };
 
     $app.methods.openFolderGeneric = function (path) {
@@ -18989,10 +13263,7 @@ console.log(`isLinux: ${LINUX}`);
         if (!imageUrl) {
             return;
         }
-        this.$nextTick(() =>
-            $app.adjustDialogZ(this.$refs.fullscreenImageDialog.$el)
-        );
-        var D = this.fullscreenImageDialog;
+        const D = this.fullscreenImageDialog;
         D.imageUrl = imageUrl;
         D.fileName = fileName;
         D.visible = true;
@@ -19079,17 +13350,6 @@ console.log(`isLinux: ${LINUX}`);
                 });
             }
         });
-    };
-
-    // #endregion
-    // #region | VRChat Credits
-
-    API.$on('VRCCREDITS', function (args) {
-        this.currentUser.$vrchatcredits = args.json?.balance;
-    });
-
-    $app.methods.getVRChatCredits = function () {
-        miscRequest.getVRChatCredits();
     };
 
     // #endregion
@@ -19193,39 +13453,6 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.data.ossDialog = false;
 
-    // #region | App: Badges
-
-    API.$on('BADGE:UPDATE', function (args) {
-        if (args.json) {
-            $app.$message({
-                message: $t('message.badge.updated'),
-                type: 'success'
-            });
-        }
-    });
-
-    $app.methods.toggleBadgeVisibility = function (badge) {
-        if (badge.hidden) {
-            badge.showcased = false;
-        }
-        miscRequest.updateBadge({
-            badgeId: badge.badgeId,
-            hidden: badge.hidden,
-            showcased: badge.showcased
-        });
-    };
-
-    $app.methods.toggleBadgeShowcased = function (badge) {
-        if (badge.showcased) {
-            badge.hidden = false;
-        }
-        miscRequest.updateBadge({
-            badgeId: badge.badgeId,
-            hidden: badge.hidden,
-            showcased: badge.showcased
-        });
-    };
-
     $app.methods.isLinux = function () {
         return LINUX;
     };
@@ -19275,12 +13502,7 @@ console.log(`isLinux: ${LINUX}`);
         );
     };
 
-    $app.methods.getSmallThumbnailUrl = function (url) {
-        return $utils.convertFileUrlToImageUrl(url);
-    };
-
     // #endregion
-
     // #region | Tab Props
 
     $app.computed.moderationTabBind = function () {
@@ -19299,7 +13521,6 @@ console.log(`isLinux: ${LINUX}`);
             hideTooltips: this.hideTooltips,
             randomUserColours: this.randomUserColours,
             sortStatus: this.sortStatus,
-            languageClass: this.languageClass,
             confirmDeleteFriend: this.confirmDeleteFriend,
             friendsListSearch: this.friendsListSearch,
             stringComparer: this.stringComparer
@@ -19355,7 +13576,7 @@ console.log(`isLinux: ${LINUX}`);
 
     $app.computed.isSideBarTabShow = function () {
         return !(
-            this.menuActiveIndex === 'friendsList' ||
+            this.menuActiveIndex === 'friendList' ||
             this.menuActiveIndex === 'charts'
         );
     };
@@ -19429,201 +13650,201 @@ console.log(`isLinux: ${LINUX}`);
         };
     };
 
-    $app.computed.friendImportDialogBind = function () {
+    $app.computed.friendLogTabBind = function () {
         return {
-            'friend-import-dialog-visible': this.friendImportDialogVisible,
-            'friend-import-dialog-input': this.friendImportDialogInput
+            menuActiveIndex: this.menuActiveIndex,
+            friendLogTable: this.friendLogTable,
+            shiftHeld: this.shiftHeld
         };
     };
 
-    $app.computed.friendImportDialogEvent = function () {
+    $app.computed.gameLogTabBind = function () {
         return {
-            'update:friend-import-dialog-visible': (event) =>
-                (this.friendImportDialogVisible = event),
-            'update:friend-import-dialog-input': (event) =>
-                (this.friendImportDialogInput = event)
+            menuActiveIndex: this.menuActiveIndex,
+            gameLogTable: this.gameLogTable,
+            shiftHeld: this.shiftHeld,
+            hideTooltips: this.hideTooltips,
+            gameLogIsFriend: this.gameLogIsFriend,
+            gameLogIsFavorite: this.gameLogIsFavorite
         };
     };
 
-    $app.computed.worldImportDialogBind = function () {
+    $app.computed.gameLogTabEvent = function () {
         return {
-            'world-import-dialog-visible': this.worldImportDialogVisible,
-            'world-import-dialog-input': this.worldImportDialogInput,
-            'get-local-world-favorite-group-length':
-                this.getLocalWorldFavoriteGroupLength,
-            'local-world-favorite-groups': this.localWorldFavoriteGroups
+            gameLogTableLookup: this.gameLogTableLookup,
+            lookupUser: this.lookupUser,
+            updateGameLogSessionTable: (val) =>
+                (this.gameLogSessionTable = val),
+            updateSharedFeed: this.updateSharedFeed
         };
     };
 
-    $app.computed.worldImportDialogEvent = function () {
+    $app.computed.notificationTabBind = function () {
         return {
-            'update:world-import-dialog-visible': (event) =>
-                (this.worldImportDialogVisible = event),
-            'update:world-import-dialog-input': (event) =>
-                (this.worldImportDialogInput = event),
-            'add-local-world-favorite': this.addLocalWorldFavorite
+            menuActiveIndex: this.menuActiveIndex,
+            notificationTable: this.notificationTable,
+            shiftHeld: this.shiftHeld,
+            hideTooltips: this.hideTooltips,
+            lastLocation: this.lastLocation,
+            lastLocationDestination: this.lastLocationDestination,
+            isGameRunning: this.isGameRunning,
+            inviteResponseMessageTable: this.inviteResponseMessageTable,
+            updateImage: this.updateImage,
+            checkCanInvite: this.checkCanInvite,
+            inviteRequestResponseMessageTable:
+                this.inviteRequestResponseMessageTable
         };
     };
 
-    $app.computed.avatarImportDialogBind = function () {
+    $app.computed.notificationTabEvent = function () {
         return {
-            'avatar-import-dialog-visible': this.avatarImportDialogVisible,
-            'avatar-import-dialog-input': this.avatarImportDialogInput,
-            'get-local-avatar-favorite-group-length':
-                this.getLocalAvatarFavoriteGroupLength,
-            'local-avatar-favorite-groups': this.localAvatarFavoriteGroups
+            inviteImageUpload: this.inviteImageUpload,
+            clearInviteImageUpload: this.clearInviteImageUpload
         };
     };
 
-    $app.computed.avatarImportDialogEvent = function () {
+    $app.computed.feedTabBind = function () {
         return {
-            'update:avatar-import-dialog-visible': (event) =>
-                (this.avatarImportDialogVisible = event),
-            'update:avatar-import-dialog-input': (event) =>
-                (this.avatarImportDialogInput = event),
-            'add-local-avatar-favorite': this.addLocalAvatarFavorite
+            menuActiveIndex: this.menuActiveIndex,
+            hideTooltips: this.hideTooltips,
+            feedTable: this.feedTable
         };
     };
 
-    $app.computed.launchDialogBind = function () {
+    $app.computed.feedTabEvent = function () {
         return {
-            'check-can-invite': this.checkCanInvite,
-            'launch-dialog-data': this.launchDialogData,
-            'hide-tooltips': this.hideTooltips
+            feedTableLookup: this.feedTableLookup
         };
     };
 
-    $app.computed.launchDialogEvent = function () {
+    $app.computed.searchTabBind = function () {
         return {
-            'update:launch-dialog-data': (event) =>
-                (this.launchDialogData = event),
-            'launch-game': this.launchGame
+            menuActiveIndex: this.menuActiveIndex,
+            searchText: this.searchText,
+            searchUserResults: this.searchUserResults,
+            randomUserColours: this.randomUserColours,
+            avatarRemoteDatabaseProviderList:
+                this.avatarRemoteDatabaseProviderList,
+            avatarRemoteDatabaseProvider: this.avatarRemoteDatabaseProvider,
+            hideTooltips: this.hideTooltips,
+            userDialog: this.userDialog,
+            lookupAvatars: this.lookupAvatars,
+            avatarRemoteDatabase: this.avatarRemoteDatabase
         };
     };
 
-    $app.computed.favoriteDialogBind = function () {
+    $app.computed.searchTabEvent = function () {
         return {
-            'favorite-dialog': this.favoriteDialog,
-            'local-avatar-favorite-groups': this.localAvatarFavoriteGroups,
-            'local-world-favorite-groups': this.localWorldFavoriteGroups,
-            'has-local-world-favorite': this.hasLocalWorldFavorite,
-            'get-local-world-favorite-group-length':
-                this.getLocalWorldFavoriteGroupLength,
-            'has-local-avatar-favorite': this.hasLocalAvatarFavorite,
-            'get-local-avatar-favorite-group-length':
-                this.getLocalAvatarFavoriteGroupLength
+            clearSearch: this.clearSearch,
+            setAvatarProvider: this.setAvatarProvider,
+            refreshUserDialogAvatars: this.refreshUserDialogAvatars,
+            moreSearchUser: this.moreSearchUser,
+            'update:searchText': (value) => (this.searchText = value)
         };
     };
 
-    $app.computed.favoriteDialogEvent = function () {
+    $app.computed.profileTabBind = function () {
         return {
-            'update:favorite-dialog': (val) => {
-                this.favoriteDialog = val;
-            },
-            'add-local-world-favorite': this.addLocalWorldFavorite,
-            'remove-local-world-favorite': this.removeLocalWorldFavorite,
-            'add-local-avatar-favorite': this.addLocalAvatarFavorite,
-            'remove-local-avatar-favorite': this.removeLocalAvatarFavorite,
-            'delete-favorite-no-confirm': this.deleteFavoriteNoConfirm
-        };
-    };
-
-    $app.computed.exportFriendsListDialogBind = function () {
-        return {
+            menuActiveIndex: this.menuActiveIndex,
+            hideTooltips: this.hideTooltips,
+            inviteMessageTable: this.inviteMessageTable,
+            inviteResponseMessageTable: this.inviteResponseMessageTable,
+            inviteRequestMessageTable: this.inviteRequestMessageTable,
+            inviteRequestResponseMessageTable:
+                this.inviteRequestResponseMessageTable,
+            pastDisplayNameTable: this.pastDisplayNameTable,
             friends: this.friends,
-            'is-export-friends-list-dialog-visible':
-                this.isExportFriendsListDialogVisible
+            directAccessWorld: this.directAccessWorld
         };
     };
 
-    $app.computed.exportFriendsListDialogEvent = function () {
+    $app.computed.profileTabEvent = function () {
         return {
-            'update:is-export-friends-list-dialog-visible': (val) => {
-                this.isExportFriendsListDialogVisible = val;
-            }
+            logout: this.logout,
+            lookupUser: this.lookupUser,
+            showEditInviteMessageDialog: this.showEditInviteMessageDialog
         };
     };
 
-    $app.computed.exportAvatarsListDialogBind = function () {
+    $app.computed.playerListTabBind = function () {
         return {
-            'is-export-avatars-list-dialog-visible':
-                this.isExportAvatarsListDialogVisible
+            menuActiveIndex: this.menuActiveIndex,
+            currentInstanceWorld: this.currentInstanceWorld,
+            currentInstanceLocation: this.currentInstanceLocation,
+            currentInstanceWorldDescriptionExpanded:
+                this.currentInstanceWorldDescriptionExpanded,
+            photonLoggingEnabled: this.photonLoggingEnabled,
+            photonEventTableTypeFilter: this.photonEventTableTypeFilter,
+            photonEventTableTypeFilterList: this.photonEventTableTypeFilterList,
+            photonEventTableFilter: this.photonEventTableFilter,
+            hideTooltips: this.hideTooltips,
+            ipcEnabled: this.ipcEnabled,
+            photonEventIcon: this.photonEventIcon,
+            photonEventTable: this.photonEventTable,
+            photonEventTablePrevious: this.photonEventTablePrevious,
+            currentInstanceUserList: this.currentInstanceUserList,
+            chatboxUserBlacklist: this.chatboxUserBlacklist,
+            randomUserColours: this.randomUserColours,
+            lastLocation: this.lastLocation
         };
     };
 
-    $app.computed.exportAvatarsListDialogEvent = function () {
+    $app.computed.playerListTabEvent = function () {
         return {
-            'update:is-export-avatars-list-dialog-visible': (val) => {
-                this.isExportAvatarsListDialogVisible = val;
-            }
+            photonEventTableFilterChange: this.photonEventTableFilterChange,
+            getCurrentInstanceUserList: this.getCurrentInstanceUserList,
+            showUserFromPhotonId: this.showUserFromPhotonId,
+            lookupUser: this.lookupUser
         };
     };
 
-    $app.computed.previousInstancesUserDialogBind = function () {
+    $app.computed.loginPageBind = function () {
         return {
-            'previous-instances-user-dialog': this.previousInstancesUserDialog,
-            'shift-held': this.shiftHeld
+            hideTooltips: this.hideTooltips,
+            loginForm: this.loginForm,
+            enableCustomEndpoint: this.enableCustomEndpoint
         };
     };
 
-    $app.computed.previousInstancesUserDialogEvent = function () {
+    $app.computed.loginPageEvent = function () {
         return {
-            'update:previous-instances-user-dialog': (val) => {
-                this.previousInstancesUserDialog = val;
-            }
+            showVRCXUpdateDialog: this.showVRCXUpdateDialog,
+            promptProxySettings: this.promptProxySettings,
+            toggleCustomEndpoint: this.toggleCustomEndpoint,
+            deleteSavedLogin: this.deleteSavedLogin,
+            login: this.login,
+            relogin: this.relogin
         };
     };
 
-    $app.computed.previousInstancesInfoDialogBind = function () {
+    $app.computed.vrcxUpdateDialogBind = function () {
         return {
-            visible: this.previousInstancesInfoDialogVisible,
-            'instance-id': this.previousInstancesInfoDialogInstanceId,
-            'game-log-is-friend': this.gameLogIsFriend,
-            'game-log-is-favorite': this.gameLogIsFavorite,
-            'lookup-user': this.lookupUser,
-            'is-dark-mode': this.isDarkMode
+            VRCXUpdateDialog: this.VRCXUpdateDialog,
+            appVersion: this.appVersion,
+            checkingForVRCXUpdate: this.checkingForVRCXUpdate,
+            updateInProgress: this.updateInProgress,
+            updateProgress: this.updateProgress,
+            updateProgressText: this.updateProgressText,
+            pendingVRCXInstall: this.pendingVRCXInstall,
+            branch: this.branch,
+            branches: this.branches
         };
     };
 
-    $app.computed.previousInstancesInfoDialogEvent = function () {
+    $app.computed.vrcxUpdateDialogEvent = function () {
         return {
-            'update:visible': (val) => {
-                this.previousInstancesInfoDialogVisible = val;
-            }
+            'update:branch': (value) => (this.branch = value),
+            loadBranchVersions: this.loadBranchVersions,
+            cancelUpdate: this.cancelUpdate,
+            installVRCXUpdate: this.installVRCXUpdate,
+            restartVRCX: this.restartVRCX
         };
     };
 
-    $app.computed.worldDialogBind = function () {
-        return {
-            'world-dialog': this.worldDialog,
-            'hide-tooltips': this.hideTooltips,
-            'shift-held': this.shiftHeld,
-            'is-game-running': this.isGameRunning,
-            'last-location': this.lastLocation,
-            'instance-join-history': this.instanceJoinHistory,
-            'update-instance-info': this.updateInstanceInfo,
-            'is-age-gated-instances-visible': this.isAgeGatedInstancesVisible,
-            'create-new-instance': this.createNewInstance,
-            'instance-content-settings': this.instanceContentSettings,
-            'offline-friends': this.offlineFriends,
-            'active-friends': this.activeFriends,
-            'online-friends': this.onlineFriends,
-            'vip-friends': this.vipFriends,
-            'has-group-permission': this.hasGroupPermission
-        };
-    };
+    //
 
-    $app.computed.worldDialogEvent = function () {
-        return {
-            'update:world-dialog': (val) => {
-                this.worldDialog = val;
-            },
-            'open-folder-generic': this.openFolderGeneric,
-            'delete-vrchat-cache': this.deleteVRChatCache,
-            'world-dialog-command': this.worldDialogCommand,
-            'refresh-instance-player-count': this.refreshInstancePlayerCount,
-            'download-and-save-json': this.downloadAndSaveJson
-        };
+    $app.methods.languageClass = function (key) {
+        return languageClass(key);
     };
 
     // #endregion

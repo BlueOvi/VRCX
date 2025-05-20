@@ -1,5 +1,5 @@
 import { baseClass, $app, API, $t, $utils } from './baseClass.js';
-import database from '../repository/database.js';
+import database from '../service/database.js';
 
 export default class extends baseClass {
     constructor(_app, _API, _t) {
@@ -15,7 +15,6 @@ export default class extends baseClass {
     _methods = {
         async migrateMemos() {
             var json = JSON.parse(await VRCXStorage.GetAll());
-            database.begin();
             for (var line in json) {
                 if (line.substring(0, 8) === 'memo_usr') {
                     var userId = line.substring(5);
@@ -26,12 +25,6 @@ export default class extends baseClass {
                     }
                 }
             }
-            database.commit();
-        },
-
-        onUserMemoChange() {
-            var D = this.userDialog;
-            this.saveUserMemo(D.id, D.memo);
         },
 
         async getUserMemo(userId) {
@@ -47,15 +40,15 @@ export default class extends baseClass {
             }
         },
 
-        saveUserMemo(id, memo) {
+        async saveUserMemo(id, memo) {
             if (memo) {
-                database.setUserMemo({
+                await database.setUserMemo({
                     userId: id,
                     editedAt: new Date().toJSON(),
                     memo
                 });
             } else {
-                database.deleteUserMemo(id);
+                await database.deleteUserMemo(id);
             }
             var ref = this.friends.get(id);
             if (ref) {
@@ -97,11 +90,6 @@ export default class extends baseClass {
             }
         },
 
-        onAvatarMemoChange() {
-            var D = this.avatarDialog;
-            this.saveAvatarMemo(D.id, D.memo);
-        },
-
         async getAvatarMemo(avatarId) {
             try {
                 return await database.getAvatarMemoDB(avatarId);
@@ -112,18 +100,6 @@ export default class extends baseClass {
                     editedAt: '',
                     memo: ''
                 };
-            }
-        },
-
-        saveAvatarMemo(avatarId, memo) {
-            if (memo) {
-                database.setAvatarMemo({
-                    avatarId,
-                    editedAt: new Date().toJSON(),
-                    memo
-                });
-            } else {
-                database.deleteAvatarMemo(avatarId);
             }
         }
     };

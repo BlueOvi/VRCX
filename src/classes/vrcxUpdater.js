@@ -44,9 +44,6 @@ export default class extends baseClass {
 
     _methods = {
         async showVRCXUpdateDialog() {
-            this.$nextTick(() =>
-                $app.adjustDialogZ(this.$refs.VRCXUpdateDialog.$el)
-            );
             var D = this.VRCXUpdateDialog;
             D.visible = true;
             D.updatePendingIsLatest = false;
@@ -172,7 +169,10 @@ export default class extends baseClass {
             try {
                 var response = await webApiService.execute({
                     url,
-                    method: 'GET'
+                    method: 'GET',
+                    headers: {
+                        'VRCX-ID': this.vrcxId
+                    }
                 });
             } finally {
                 this.checkingForVRCXUpdate = false;
@@ -243,7 +243,10 @@ export default class extends baseClass {
             try {
                 var response = await webApiService.execute({
                     url,
-                    method: 'GET'
+                    method: 'GET',
+                    headers: {
+                        'VRCX-ID': this.vrcxId
+                    }
                 });
             } finally {
                 this.checkingForVRCXUpdate = false;
