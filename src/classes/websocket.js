@@ -554,9 +554,21 @@ export default class extends baseClass {
                     } else if (contentType === 'world') {
                         // hmm
                     } else if (contentType === 'created') {
-                        // on avatar upload
+                        // on avatar upload, might be gone now
+                    } else if (contentType === 'avatargallery') {
+                        // on avatar gallery image upload
+                    } else if (contentType === 'invitePhoto') {
+                        // on uploading invite photo
+                    } else if (!contentType) {
+                        console.log(
+                            'content-refresh without contentType',
+                            content
+                        );
                     } else {
-                        console.log('Unknown content-refresh', content);
+                        console.log(
+                            'Unknown content-refresh type',
+                            content.contentType
+                        );
                     }
                     break;
 
