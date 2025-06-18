@@ -153,6 +153,7 @@ import _languages from './classes/languages.js';
 import _groups from './classes/groups.js';
 import _vrcRegistry from './classes/vrcRegistry.js';
 import _restoreFriendOrder from './classes/restoreFriendOrder.js';
+import _inventory from './classes/inventory.js';
 
 import { userNotes } from './classes/userNotes.js';
 
@@ -244,7 +245,8 @@ console.log(`isLinux: ${LINUX}`);
         languages: new _languages($app, API, $t),
         groups: new _groups($app, API, $t),
         vrcRegistry: new _vrcRegistry($app, API, $t),
-        restoreFriendOrder: new _restoreFriendOrder($app, API, $t)
+        restoreFriendOrder: new _restoreFriendOrder($app, API, $t),
+        inventory: new _inventory($app, API, $t)
     };
 
     await configRepository.init();
@@ -364,7 +366,9 @@ console.log(`isLinux: ${LINUX}`);
                 getAvatarGallery: this.getAvatarGallery,
                 inviteImageUpload: this.inviteImageUpload,
                 clearInviteImageUpload: this.clearInviteImageUpload,
-                isLinux: this.isLinux
+                isLinux: this.isLinux,
+                openFolderGeneric: this.openFolderGeneric,
+                deleteVRChatCache: this.deleteVRChatCache
             };
         },
         el: '#root',
@@ -1999,11 +2003,20 @@ console.log(`isLinux: ${LINUX}`);
     API.$on('LOGIN', function () {
         $app.localFavoriteFriends.clear();
         $app.currentUserGroupsInit = false;
+        this.cachedGroups.clear();
+        this.cachedAvatars.clear();
+        this.cachedWorlds.clear();
+        this.cachedUsers.clear();
+        this.cachedInstances.clear();
+        this.cachedAvatarNames.clear();
+        this.cachedAvatarModerations.clear();
+        this.cachedPlayerModerations.clear();
         this.cachedFavorites.clear();
         this.cachedFavoritesByObjectId.clear();
         this.cachedFavoriteGroups.clear();
         this.cachedFavoriteGroupsByTypeName.clear();
         this.currentUserGroups.clear();
+        this.currentUserInventory.clear();
         this.queuedInstances.clear();
         this.favoriteFriendGroups = [];
         this.favoriteWorldGroups = [];
@@ -5680,6 +5693,9 @@ console.log(`isLinux: ${LINUX}`);
         if (ctx.friendNumber) {
             ref.$friendNumber = ctx.friendNumber;
         }
+        if (!ref.$friendNumber) {
+            ref.$friendNumber = 0; // no null
+        }
         if (ctx.displayName !== ref.displayName) {
             if (ctx.displayName) {
                 var friendLogHistoryDisplayName = {
@@ -6277,7 +6293,7 @@ console.log(`isLinux: ${LINUX}`);
     );
     $app.data.hideUserMemos = await configRepository.getBool(
         'VRCX_hideUserMemos',
-        true
+        false
     );
     $app.data.hideUnfriends = await configRepository.getBool(
         'VRCX_hideUnfriends',
@@ -9846,7 +9862,8 @@ console.log(`isLinux: ${LINUX}`);
         'stickers',
         'pedestals',
         'prints',
-        'drones'
+        'drones',
+        'props'
     ];
 
     $app.methods.createNewInstance = async function (worldId = '', options) {
@@ -10790,6 +10807,7 @@ console.log(`isLinux: ${LINUX}`);
     $app.data.galleryDialogEmojisLoading = false;
     $app.data.galleryDialogStickersLoading = false;
     $app.data.galleryDialogPrintsLoading = false;
+    $app.data.galleryDialogInventoryLoading = false;
 
     API.$on('LOGIN', function () {
         $app.galleryTable = [];
@@ -10802,6 +10820,7 @@ console.log(`isLinux: ${LINUX}`);
         this.refreshEmojiTable();
         this.refreshStickerTable();
         this.refreshPrintTable();
+        this.getInventory();
         workerTimers.setTimeout(() => this.setGalleryTab(pageNum), 100);
     };
 

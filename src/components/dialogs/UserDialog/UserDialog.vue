@@ -367,7 +367,7 @@
                                 }}</el-dropdown-item>
                                 <template v-if="userDialog.ref.id === API.currentUser.id">
                                     <el-dropdown-item icon="el-icon-picture-outline" command="Manage Gallery" divided>{{
-                                        t('dialog.user.actions.manage_gallery_icon')
+                                        t('dialog.user.actions.manage_gallery_inventory_icon')
                                     }}</el-dropdown-item>
                                     <el-dropdown-item icon="el-icon-s-custom" command="Show Avatar Author">{{
                                         t('dialog.user.actions.show_avatar_author')
@@ -1798,6 +1798,7 @@
             :gallery-dialog-emojis-loading="galleryDialogEmojisLoading"
             :gallery-dialog-stickers-loading="galleryDialogStickersLoading"
             :gallery-dialog-prints-loading="galleryDialogPrintsLoading"
+            :gallery-dialog-inventory-loading="galleryDialogInventoryLoading"
             :gallery-table="galleryTable"
             :VRCPlusIconsTable="VRCPlusIconsTable"
             :emoji-table="emojiTable"
@@ -1805,6 +1806,7 @@
             :print-upload-note="printUploadNote"
             :print-crop-border="printCropBorder"
             :print-table="printTable"
+            :inventory-table="inventoryTable"
             @refreshGalleryTable="refreshGalleryTable"
             @refreshVRCPlusIconsTable="refreshVRCPlusIconsTable"
             @refreshStickerTable="refreshStickerTable"
@@ -2002,6 +2004,10 @@
             type: Boolean,
             required: true
         },
+        galleryDialogInventoryLoading: {
+            type: Boolean,
+            required: true
+        },
         galleryTable: {
             type: Array,
             required: true
@@ -2028,6 +2034,10 @@
             required: true
         },
         printTable: {
+            type: Array,
+            required: true
+        },
+        inventoryTable: {
             type: Array,
             required: true
         }
