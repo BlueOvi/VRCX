@@ -260,6 +260,10 @@ export default class extends baseClass {
                     this.processScreenshot(gameLog.screenshotPath);
                     break;
                 case 'api-request':
+                    if ($app.debugWebRequests) {
+                        console.log('API Request:', gameLog.url);
+                    }
+
                     // var userId = '';
                     // try {
                     //     var url = new URL(gameLog.url);
@@ -277,23 +281,47 @@ export default class extends baseClass {
                     //     break;
                     // }
 
-                    if (!$app.saveInstancePrints) {
-                        break;
+                    if ($app.saveInstanceEmoji) {
+                        try {
+                            // https://api.vrchat.cloud/api/1/user/usr_032383a7-748c-4fb2-94e4-bcb928e5de6b/inventory/inv_75781d65-92fe-4a80-a1ff-27ee6e843b08
+                            const url = new URL(gameLog.url);
+                            if (
+                                url.pathname.substring(0, 12) ===
+                                    '/api/1/user/' &&
+                                url.pathname.includes('/inventory/inv_')
+                            ) {
+                                const pathArray = url.pathname.split('/');
+                                const userId = pathArray[4];
+                                const inventoryId = pathArray[6];
+                                if (userId && inventoryId.length === 40) {
+                                    $app.queueCheckInstanceInventory(
+                                        inventoryId,
+                                        userId
+                                    );
+                                }
+                            }
+                        } catch (err) {
+                            console.error(err);
+                        }
                     }
-                    try {
-                        var printId = '';
-                        var url = new URL(gameLog.url);
-                        if (
-                            url.pathname.substring(0, 14) === '/api/1/prints/'
-                        ) {
-                            var pathArray = url.pathname.split('/');
-                            printId = pathArray[4];
+
+                    if ($app.saveInstancePrints) {
+                        try {
+                            let printId = '';
+                            const url1 = new URL(gameLog.url);
+                            if (
+                                url1.pathname.substring(0, 14) ===
+                                '/api/1/prints/'
+                            ) {
+                                const pathArray = url1.pathname.split('/');
+                                printId = pathArray[4];
+                            }
+                            if (printId && printId.length === 41) {
+                                $app.queueSavePrintToFile(printId);
+                            }
+                        } catch (err) {
+                            console.error(err);
                         }
-                        if (printId && printId.length === 41) {
-                            $app.queueSavePrintToFile(printId);
-                        }
-                    } catch (err) {
-                        console.error(err);
                     }
                     break;
                 case 'avatar-change':
@@ -430,7 +458,8 @@ export default class extends baseClass {
 
                     $app.trySaveStickerToFile(
                         gameLog.displayName,
-                        gameLog.fileId
+                        gameLog.userId,
+                        gameLog.inventoryId
                     );
                     break;
             }
@@ -951,7 +980,6 @@ export default class extends baseClass {
 
         async updateGameLog(dateTill) {
             await gameLogService.setDateTill(dateTill);
-            await gameLogService.reset();
             await new Promise((resolve) => {
                 workerTimers.setTimeout(resolve, 10000);
             });
