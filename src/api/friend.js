@@ -4,7 +4,7 @@ import { useUserStore } from '../stores/user';
 const friendReq = {
     /**
      * Fetch friends of current user.
-     * @type {import('../types/friend').getFriends}
+     * @type {import('../types/api/friend').GetFriends}
      */
     getFriends(params) {
         const userStore = useUserStore();
@@ -29,7 +29,7 @@ const friendReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: T, params}>}
+     * @returns {Promise<{json: any, params: { userId: string }}>}
      */
     sendFriendRequest(params) {
         return request(`user/${params.userId}/friendRequest`, {
@@ -45,7 +45,7 @@ const friendReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: any, params}>}
+     * @returns {Promise<{json: any, params: { userId: string }}>}
      */
     cancelFriendRequest(params) {
         return request(`user/${params.userId}/friendRequest`, {
@@ -61,7 +61,7 @@ const friendReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: any, params}>}
+     * @returns {Promise<{json: any, params: { userId: string }}>}
      */
     deleteFriend(params) {
         return request(`auth/user/friends/${params.userId}`, {
@@ -77,7 +77,7 @@ const friendReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: any, params}>}
+     * @returns {Promise<{json: any, params: { userId: string }}>}
      */
     getFriendStatus(params) {
         return request(`user/${params.userId}/friendStatus`, {
@@ -92,6 +92,11 @@ const friendReq = {
         });
     },
 
+    /**
+     * @param {any} params
+     * @param {string} userId
+     * @returns {Promise<{json: any, params: any, userId: string}>}
+     */
     deleteHiddenFriendRequest(params, userId) {
         return request(`user/${userId}/friendRequest`, {
             method: 'DELETE',

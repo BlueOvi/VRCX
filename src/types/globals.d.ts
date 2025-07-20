@@ -7,6 +7,7 @@ declare global {
     interface Window {
         $app: any;
         AppApi: AppApi;
+        AppApiVr: AppApiVr;
         WebApi: WebApi;
         VRCXStorage: VRCXStorage;
         SQLite: SQLite;
@@ -14,7 +15,7 @@ declare global {
         Discord: Discord;
         AssetBundleManager: AssetBundleManager;
         webApiService: webApiService;
-        request: {};
+        request: any;
         configRepository: any;
         datebase: any;
         gameLogService: any;
@@ -51,54 +52,34 @@ declare global {
                 Function: (event: any, state: { windowState: any }) => void
             ) => void;
             restartApp: () => Promise<void>;
+            getWristOverlayWindow: () => Promise<boolean>;
+            getHmdOverlayWindow: () => Promise<boolean>;
+            updateVr: (
+                active: bool,
+                hmdOverlay: bool,
+                wristOverlay: bool,
+                menuButton: bool,
+                overlayHand: int
+            ) => Promise<void>;
         };
-        __APP_GLOBALS__: {
-            debug: boolean;
-            debugWebSocket: boolean;
-            debugUserDiff: boolean;
-            debugPhotonLogging: boolean;
-            debugGameLog: boolean;
-            debugWebRequests: boolean;
-            debugFriendState: boolean;
-            errorNoty: any;
-            dontLogMeOut: boolean;
-            endpointDomain: string;
-            endpointDomainVrchat: string;
-            websocketDomain: string;
-            websocketDomainVrchat: string;
-        };
+        __APP_GLOBALS__: AppGlobals;
     }
 
-    declare const API: {
-        // HTTP request methods
-        $bulk: (options: any, args?: any) => Promise<any>;
-        bulk: (options: any) => Promise<any>;
-
-        // Event system
-        $emit: (event: string, ...args: any[]) => void;
-        $off: (event: string, handler?: Function) => void;
-        $on: (event: string, handler: Function) => void;
-
-        // Debug functions
-        debug: boolean | ((message: any) => void);
-        debugCurrentUserDiff: boolean | ((data: any) => void);
-        debugFriendState: boolean | ((data: any) => void);
-        debugGameLog: boolean | ((data: any) => void);
-        debugPhotonLogging: boolean | ((data: any) => void);
-        debugUserDiff: boolean | ((data: any) => void);
-        debugWebRequests: boolean | ((data: any) => void);
-        debugWebSocket: boolean | ((data: any) => void);
-
-        // Configuration
+    interface AppGlobals {
+        debug: boolean;
+        debugWebSocket: boolean;
+        debugUserDiff: boolean;
+        debugPhotonLogging: boolean;
+        debugGameLog: boolean;
+        debugWebRequests: boolean;
+        debugFriendState: boolean;
+        errorNoty: any;
         dontLogMeOut: boolean;
         endpointDomain: string;
         endpointDomainVrchat: string;
         websocketDomain: string;
         websocketDomainVrchat: string;
-
-        // Error handling
-        errorNoty: (error: any) => void;
-    };
+    }
 
     const CefSharp: {
         PostMessage: (message: any) => void;
@@ -141,7 +122,10 @@ declare global {
     };
 
     const Discord: {
-        SetTimestamps(startTimestamp: number, endTimestamp: number): void;
+        SetTimestamps(
+            startTimestamp: number,
+            endTimestamp: number
+        ): Promise<void>;
         SetAssets(
             bigIcon: string,
             bigIconText: string,
@@ -154,8 +138,8 @@ declare global {
             buttonUrl: string,
             appId: string,
             activityType: number
-        ): void;
-        SetText(details: string, state: string): void;
+        ): Promise<void>;
+        SetText(details: string, state: string): Promise<void>;
         SetActive(active: boolean): Promise<boolean>;
     };
 
@@ -202,8 +186,8 @@ declare global {
         GetLaunchCommand(): Promise<string>;
         IPCAnnounceStart(): Promise<void>;
         SendIpc(type: string, data: string): Promise<void>;
-        CustomCssPath(): Promise<string>;
-        CustomScriptPath(): Promise<string>;
+        CustomCss(): Promise<string>;
+        CustomScript(): Promise<string>;
         CurrentCulture(): Promise<string>;
         CurrentLanguage(): Promise<string>;
         GetVersion(): Promise<string>;
@@ -355,21 +339,23 @@ declare global {
     };
 
     const AppApiVr: {
-        Init(): void;
-        VrInit(): void;
-        ToggleSystemMonitor(enabled: boolean): void;
-        CpuUsage(): number;
-        GetVRDevices(): string[][];
-        GetUptime(): number;
-        CurrentCulture(): string;
-        CustomVrScriptPath(): string;
-        IsRunningUnderWine(): boolean;
+        Init(): Promise<void>;
+        VrInit(): Promise<void>;
+        ToggleSystemMonitor(enabled: boolean): Promise<void>;
+        CpuUsage(): Promise<number>;
+        GetVRDevices(): Promise<string[][]>;
+        GetUptime(): Promise<number>;
+        CurrentCulture(): Promise<string>;
+        CustomVrScript(): Promise<string>;
+        IsRunningUnderWine(): Promise<boolean>;
+        GetExecuteVrFeedFunctionQueue(): Promise<Map<string, string>>;
+        GetExecuteVrOverlayFunctionQueue(): Promise<Map<string, string>>;
     };
 
     const WebApi: {
-        ClearCookies(): void;
-        GetCookies(): string;
-        SetCookies(cookie: string): void;
+        ClearCookies(): Promise<void>;
+        GetCookies(): Promise<string>;
+        SetCookies(cookie: string): Promise<void>;
         Execute(options: any): Promise<{ Item1: number; Item2: string }>;
         ExecuteJson(requestJson: string): Promise<string>;
     };
@@ -399,12 +385,15 @@ declare global {
     };
 
     const webApiService: {
-        clearCookies(): void;
-        getCookies(): string;
-        setCookies(cookie: string): void;
+        clearCookies(): Promise<void>;
+        getCookies(): Promise<string>;
+        setCookies(cookie: string): Promise<void>;
         execute(options: {
             url: string;
-            method: string;
+            method?: string;
+            uploadFilePUT?: boolean;
+            fileData?: string;
+            fileMIME?: string;
             headers?: Record<string, string>;
             data?: any;
         }): Promise<{ status: number; data: string }>;

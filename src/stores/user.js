@@ -436,8 +436,8 @@ export const useUserStore = defineStore('User', () => {
     const robotUrl = `${AppGlobal.endpointDomain}/file/file_0e8c4e32-7444-44ea-ade4-313c010d4bae/1/file`;
     /**
      *
-     * @param {import('../types/user').getUserResponse} json
-     * @returns {import('../types/user').vrcxUser}
+     * @param {import('../types/api/user').GetUserResponse} json
+     * @returns {import('../types/api/user').VrcxUser}
      */
     function applyUser(json) {
         let hasPropChanged = false;
@@ -851,12 +851,7 @@ export const useUserStore = defineStore('User', () => {
                         }
                         applyUserDialogLocation(true);
 
-                        if (
-                            args.cache &&
-                            args.ref.$lastFetch < Date.now() - 10000 // 10 seconds
-                        ) {
-                            userRequest.getUser(args.params);
-                        }
+                        userRequest.getUser(args.params);
                         let inCurrentWorld = false;
                         if (
                             locationStore.lastLocation.playerList.has(D.ref.id)
@@ -1740,8 +1735,8 @@ export const useUserStore = defineStore('User', () => {
     }
 
     /**
-     * @param {import('../types/user').getCurrentUserResponse} json
-     * @returns {import('../types/user').getCurrentUserResponse}
+     * @param {import('../types/api/user').GetCurrentUserResponse} json
+     * @returns {import('../types/api/user').GetCurrentUserResponse}
      */
     function applyCurrentUser(json) {
         authStore.attemptingAutoLogin = false;

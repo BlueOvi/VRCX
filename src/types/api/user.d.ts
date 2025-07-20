@@ -1,11 +1,42 @@
-export type getUser = (params: { userId: string }) => Promise<{
+// Exported API functions
+export type GetUser = (params: { userId: string }) => Promise<{
     cache?: boolean;
-    json: getUserResponse;
-    ref: vrcxUser;
+    json: GetUserResponse;
+    ref: VrcxUser;
     params: { userId: string };
 }>;
 
-export interface vrcxUser extends getUserResponse {
+export type GetCurrentUser = (params: any) => Promise<{
+    json: GetCurrentUserResponse;
+    ref: VrcxCurrentUser;
+    params: GetCurrentUserResponse;
+}>;
+
+export type GetCachedUser = (params: { userId: string }) => Promise<{
+    cache?: boolean;
+    json: GetUserResponse;
+    ref: VrcxUser;
+    params: { userId: string };
+}>;
+
+export type GetUsers = (params: {
+    n: number;
+    offset: number;
+    search?: string;
+    sort?: 'nuisanceFactor' | 'created' | '_created_at' | 'last_login';
+    order?: 'ascending' | 'descending';
+}) => Promise<{
+    json: UserSearchResponse;
+    params: any;
+}>;
+
+export type AddUserTags = (params: string[]) => Promise<{
+    json: GetCurrentUserResponse;
+    params: string[];
+}>;
+
+// Exported interfaces
+export interface VrcxUser extends GetUserResponse {
     $location: {};
     $location_at: number;
     $online_for: number;
@@ -32,7 +63,50 @@ export interface vrcxUser extends getUserResponse {
     $lastFetch: number;
 }
 
-interface getUserResponse {
+export interface VrcxCurrentUser extends GetCurrentUserResponse {
+    $online_for?: number;
+    $offline_for?: number | null;
+    $location_at?: number;
+    $travelingToTime?: number;
+    $previousAvatarSwapTime?: number | null;
+    $homeLocation?: {};
+    $isVRCPlus?: boolean;
+    $isModerator?: boolean;
+    $isTroll?: boolean;
+    $isProbableTroll?: boolean;
+    $trustLevel?: string;
+    $trustClass?: string;
+    $userColour?: string;
+    $trustSortNum?: number;
+    $languages?: string[];
+    $locationTag?: string;
+    $travelingToLocation?: string;
+}
+
+// Type aliases
+type UserSearchResponse = UserSearchResponseItem[];
+
+// Internal response types
+interface UserSearchResponseItem {
+    bio: string;
+    bioLinks: string[];
+    currentAvatarImageUrl: string;
+    currentAvatarTags: any[];
+    currentAvatarThumbnailImageUrl: string;
+    developerType: string;
+    displayName: string;
+    id: string;
+    isFriend: boolean;
+    last_platform: string;
+    profilePicOverride: string;
+    pronouns?: string;
+    status: string;
+    statusDescription: string;
+    tags: string[];
+    userIcon: string;
+}
+
+interface GetUserResponse {
     ageVerificationStatus: string;
     ageVerified: boolean;
     allowAvatarCopying: boolean;
@@ -77,33 +151,7 @@ interface getUserResponse {
     worldId?: string;
 }
 
-export type getCurrentUser = (any) => Promise<{
-    json: getCurrentUserResponse;
-    ref: vrcxCurrentUser;
-    params: getCurrentUserResponse;
-}>;
-
-export interface vrcxCurrentUser extends getCurrentUserResponse {
-    $online_for?: number;
-    $offline_for?: number | null;
-    $location_at?: number;
-    $travelingToTime?: number;
-    $previousAvatarSwapTime?: number | null;
-    $homeLocation?: {};
-    $isVRCPlus?: boolean;
-    $isModerator?: boolean;
-    $isTroll?: boolean;
-    $isProbableTroll?: boolean;
-    $trustLevel?: string;
-    $trustClass?: string;
-    $userColour?: string;
-    $trustSortNum?: number;
-    $languages?: string[];
-    $locationTag?: string;
-    $travelingToLocation?: string;
-}
-
-interface getCurrentUserResponse extends getUserResponse {
+interface GetCurrentUserResponse extends GetUserResponse {
     acceptedPrivacyVersion: number;
     acceptedTOSVersion: number;
     accountDeletionDate: string | null;
@@ -128,7 +176,7 @@ interface getCurrentUserResponse extends getUserResponse {
     oculusId: string;
     offlineFriends: string[];
     onlineFriends: string[];
-    pastDisplayNames: { displayName: string; dateChanged: string }[];
+    pastDisplayNames: { displayName: string; updated_at: string }[];
     picoId: string;
     presence?: {
         avatarThumbnail: string;

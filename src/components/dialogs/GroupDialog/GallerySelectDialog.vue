@@ -34,16 +34,16 @@
             <br />
             <div
                 v-for="image in galleryTable"
-                v-if="image.versions && image.versions.length > 0"
                 :key="image.id"
                 class="x-friend-item"
                 style="display: inline-block; margin-top: 10px; width: unset; cursor: default">
-                <div
-                    v-if="image.versions[image.versions.length - 1].file.url"
-                    class="vrcplus-icon"
-                    @click="selectImageGallerySelect(image.versions[image.versions.length - 1].file.url, image.id)">
-                    <img v-lazy="image.versions[image.versions.length - 1].file.url" class="avatar" />
-                </div>
+                <template v-if="image.versions && image.versions.length > 0">
+                    <div
+                        v-if="image.versions[image.versions.length - 1].file.url"
+                        class="vrcplus-icon"
+                        @click="selectImageGallerySelect(image.versions[image.versions.length - 1].file.url, image.id)">
+                        <img v-lazy="image.versions[image.versions.length - 1].file.url" class="avatar" /></div
+                ></template>
             </div>
         </div>
     </safe-dialog>
@@ -84,8 +84,9 @@
 
     function onFileChangeGallery(e) {
         const clearFile = function () {
-            if (document.querySelector('#GalleryUploadButton')) {
-                document.querySelector('#GalleryUploadButton').value = '';
+            const fileInput = /** @type{HTMLInputElement} */ (document.querySelector('#GalleryUploadButton'));
+            if (fileInput) {
+                fileInput.value = '';
             }
         };
         const files = e.target.files || e.dataTransfer.files;
@@ -111,7 +112,7 @@
         }
         const r = new FileReader();
         r.onload = function () {
-            const base64Body = btoa(r.result);
+            const base64Body = btoa(r.result.toString());
             vrcPlusImageRequest.uploadGalleryImage(base64Body).then((args) => {
                 handleGalleryImageAdd(args);
                 $message({

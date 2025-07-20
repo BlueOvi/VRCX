@@ -189,6 +189,10 @@ export const useVrcxStore = defineStore('Vrcx', () => {
             }
         } else if (e.altKey && e.key === 'R') {
             refreshCustomCss();
+            $app.$message({
+                message: 'Custom CSS refreshed',
+                type: 'success'
+            });
         }
     });
 
@@ -203,7 +207,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         if (document.contains(document.getElementById('app-emoji-font'))) {
             document.getElementById('app-emoji-font').remove();
         }
-        if (gameStore.isRunningUnderWine) {
+        if (state.isRunningUnderWine) {
             const $appEmojiFont = document.createElement('link');
             $appEmojiFont.setAttribute('id', 'app-emoji-font');
             $appEmojiFont.rel = 'stylesheet';
@@ -652,11 +656,11 @@ export const useVrcxStore = defineStore('Vrcx', () => {
 
     async function backupVrcRegistry(name) {
         let regJson;
-        if (LINUX) {
+        if (WINDOWS) {
+            regJson = await AppApi.GetVRChatRegistry();
+        } else {
             regJson = await AppApi.GetVRChatRegistryJson();
             regJson = JSON.parse(regJson);
-        } else {
-            regJson = await AppApi.GetVRChatRegistry();
         }
         const newBackup = {
             name,

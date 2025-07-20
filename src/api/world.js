@@ -3,8 +3,7 @@ import { useWorldStore } from '../stores';
 
 const worldReq = {
     /**
-     * @param {{worldId: string}} params
-     * @returns {Promise<{json: any, params}>}
+     * @type {import('../types/api/world').GetWorld}
      */
     getWorld(params) {
         const worldStore = useWorldStore();
@@ -22,7 +21,7 @@ const worldReq = {
 
     /**
      * @param {{worldId: string}} params
-     * @returns {Promise<{json: any, params}>}
+     * @returns {Promise<{json: any, ref: any, cache?: boolean, params}>}
      */
     getCachedWorld(params) {
         const worldStore = useWorldStore();
@@ -48,22 +47,7 @@ const worldReq = {
     },
 
     /**
-     * @typedef {object} WorldSearchParameter
-     * @property {number} n
-     * @property {number} offset
-     * @property {string} search
-     * @property {string} userId
-     * @property {'me' | 'friend'} user
-     * @property {'popularity' | 'heat' | 'trust' | 'shuffle' | 'favorites' | 'reportScore' | 'reportCount' | 'publicationDate' | 'labsPublicationDate' | 'created' | '_created_at' | 'updated' | '_updated_at' | 'order'} sort
-     * @property {'ascending' | 'descending'} order
-     * @property {'public' | 'private' | 'hidden' | 'all'} releaseStatus
-     * @property {boolean} featured
-     */
-    /**
-     *
-     * @param {WorldSearchParameter} params
-     * @param {string?} option sub-path of calling endpoint
-     * @returns {Promise<{json: any, params, option}>}
+     * @type {import('../types/api/world').GetWorlds}
      */
     getWorlds(params, option) {
         const worldStore = useWorldStore();
@@ -103,8 +87,7 @@ const worldReq = {
     },
 
     /**
-     * @param {{id: string}} params
-     * @returns {Promise<{json: any, params}>}
+     * @type {import('../types/api/world').SaveWorld}
      */
     saveWorld(params) {
         const worldStore = useWorldStore();
