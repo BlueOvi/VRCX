@@ -1,4 +1,3 @@
-import { storeToRefs } from 'pinia';
 import { useAppearanceSettingsStore, useUserStore } from '../../stores';
 import { languageMappings } from '../constants';
 import { timeToText } from './base/format';
@@ -8,17 +7,17 @@ import { convertFileUrlToImageUrl } from './common';
 /**
  *
  * @param {object} ctx
- * @returns {number}
+ * @returns {string?}
  */
 function userOnlineForTimestamp(ctx) {
     if (ctx.ref.state === 'online' && ctx.ref.$online_for) {
-        return ctx.ref.$online_for;
+        return new Date(ctx.ref.$online_for).toJSON();
     } else if (ctx.ref.state === 'active' && ctx.ref.$active_for) {
-        return ctx.ref.$active_for;
+        return new Date(ctx.ref.$active_for).toJSON();
     } else if (ctx.ref.$offline_for) {
-        return ctx.ref.$offline_for;
+        return new Date(ctx.ref.$offline_for).toJSON();
     }
-    return 0;
+    return null;
 }
 
 /**
@@ -182,15 +181,13 @@ function userImage(
     isUserDialogIcon = false
 ) {
     const appAppearanceSettingsStore = useAppearanceSettingsStore();
-    const { displayVRCPlusIconsAsAvatar } = storeToRefs(
-        appAppearanceSettingsStore
-    );
     if (!user) {
         return '';
     }
     if (
         (isUserDialogIcon && user.userIcon) ||
-        (displayVRCPlusIconsAsAvatar.value && user.userIcon)
+        (appAppearanceSettingsStore.displayVRCPlusIconsAsAvatar &&
+            user.userIcon)
     ) {
         if (isIcon) {
             return convertFileUrlToImageUrl(user.userIcon);
@@ -238,10 +235,10 @@ function userImage(
  */
 function userImageFull(user) {
     const appAppearanceSettingsStore = useAppearanceSettingsStore();
-    const { displayVRCPlusIconsAsAvatar } = storeToRefs(
-        appAppearanceSettingsStore
-    );
-    if (displayVRCPlusIconsAsAvatar.value && user.userIcon) {
+    if (
+        appAppearanceSettingsStore.displayVRCPlusIconsAsAvatar &&
+        user.userIcon
+    ) {
         return user.userIcon;
     }
     if (user.profilePicOverride) {

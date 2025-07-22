@@ -26,6 +26,11 @@ if (process.platform === 'linux') {
         process.env.DOTNET_ROOT = bundledDotNetPath;
         process.env.PATH = `${bundledDotNetPath}:${process.env.PATH}`;
     }
+
+    const openvrLibPath = path.join(process.resourcesPath, '..', 'bin');
+    if (fs.existsSync(openvrLibPath)) {
+        process.env.LD_LIBRARY_PATH = `${openvrLibPath}:${process.env.LD_LIBRARY_PATH || ''}`;
+    }
 } else if (process.platform === 'darwin') {
     const dotnetPath = path.join('/usr/local/share/dotnet');
     const dotnetPathArm = path.join('/usr/local/share/dotnet/x64');
@@ -743,11 +748,19 @@ function getVersion() {
 }
 
 function isDotNetInstalled() {
-    let dotnetPath = path.join(process.env.DOTNET_ROOT, 'dotnet');
-    if (!process.env.DOTNET_ROOT || !fs.existsSync(dotnetPath)) {
+    let dotnetPath;
+
+    if (process.env.DOTNET_ROOT) {
+        dotnetPath = path.join(process.env.DOTNET_ROOT, 'dotnet');
+        if (!fs.existsSync(dotnetPath)) {
+            // fallback to command
+            dotnetPath = 'dotnet';
+        }
+    } else {
         // fallback to command
         dotnetPath = 'dotnet';
     }
+
     console.log('Checking for .NET installation at:', dotnetPath);
 
     // Fallback to system .NET runtime
