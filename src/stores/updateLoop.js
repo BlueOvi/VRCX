@@ -15,6 +15,7 @@ import { useUserStore } from './user';
 import { useVrcxStore } from './vrcx';
 import { useVRCXUpdaterStore } from './vrcxUpdater';
 import { useGroupStore } from './group';
+import { useVrStore } from './vr';
 
 export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
     const state = reactive({
@@ -67,6 +68,7 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
         const vrcxUpdaterStore = useVRCXUpdaterStore();
         const uiStore = useUiStore();
         const groupStore = useGroupStore();
+        const vrStore = useVrStore();
         try {
             if (watchState.isLoggedIn) {
                 if (--state.nextCurrentUserRefresh <= 0) {
@@ -117,10 +119,7 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
                     state.nextAutoStateChange = 3;
                     userStore.updateAutoStateChange();
                 }
-                if (
-                    (vrcxStore.isRunningUnderWine || LINUX) &&
-                    --state.nextGetLogCheck <= 0
-                ) {
+                if (LINUX && --state.nextGetLogCheck <= 0) {
                     state.nextGetLogCheck = 0.5;
                     const logLines = await LogWatcher.GetLogLines();
                     if (logLines) {
@@ -129,10 +128,7 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
                         });
                     }
                 }
-                if (
-                    (vrcxStore.isRunningUnderWine || LINUX) &&
-                    --state.nextGameRunningCheck <= 0
-                ) {
+                if (LINUX && --state.nextGameRunningCheck <= 0) {
                     if (WINDOWS) {
                         state.nextGameRunningCheck = 3;
                         AppApi.CheckGameRunning();
@@ -143,6 +139,7 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
                             await AppApi.IsSteamVRRunning(),
                             false
                         );
+                        vrStore.vrInit(); // TODO: make this event based
                     }
                 }
                 if (--state.nextDatabaseOptimize <= 0) {
