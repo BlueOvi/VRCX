@@ -379,6 +379,8 @@
                     "theme_mode_system": "System",
                     "theme_mode_light": "Light",
                     "theme_mode_dark": "Dark",
+                    "theme_mode_blue": "Blue",
+                    "theme_mode_darkblue": "Dark Blue",
                     "theme_mode_darkvanillaold": "Dark Vanilla (old)",
                     "theme_mode_darkvanilla": "Dark Vanilla",
                     "theme_mode_pink": "Pink",
@@ -520,6 +522,13 @@
                     "join_button": "Join button (public only)",
                     "show_details_in_private": "Show world details in private",
                     "show_images": "Show world images"
+                },
+                "rpc": {
+                    "vr": "VR",
+                    "desktop": "Desktop",
+                    "join_button": "Join",
+                    "powered_by_vrcx": "Powered by VRCX",
+                    "private_world": "Private World"
                 }
             },
             "pictures": {
