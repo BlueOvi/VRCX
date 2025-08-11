@@ -209,7 +209,7 @@ namespace VRCX
 
             // Check for chunk only present in files created by older modded versions of vrchat. (LFS, screenshotmanager), which put their metadata at the end of the file (which is not in spec bro).
             // Searching from the end of the file is a slower bruteforce operation so only do it if we have to.
-            if (result.Count == 0 && pngFile.GetChunk(PNGChunkTypeFilter.sRGB).HasValue)
+            if (result.Count == 0 && pngFile.GetChunk(PNGChunkTypeFilter.sRGB) != null)
             {
                 var lfsMetadata = PNGHelper.ReadTextChunk("Description", pngFile, true);
                 
@@ -219,14 +219,24 @@ namespace VRCX
 
             return result;
         }
+
+        public static void DeleteTextMetadata(string path, bool deleteVRChatMetadata = false)
+        {
+            using var pngFile = new PNGFile(path, 128 * 1024);
+            if (deleteVRChatMetadata)
+                PNGHelper.DeleteTextChunk("XML:com.adobe.xmp", pngFile);
+            
+            PNGHelper.DeleteTextChunk("Description", pngFile);
+        }
         
         public static bool WriteVRCXMetadata(string text, string path)
         {
             using var pngFile = new PNGFile(path);
             var chunk = PNGHelper.GenerateTextChunk("Description", text);
-            return pngFile.WriteChunk(chunk);
+            
+            return pngFile.WriteChunk(chunk);;
         }
-        
+
         public static ScreenshotMetadata ParseVRCImage(string xmlString)
         {
             var index = xmlString.IndexOf("<x:xmpmeta", StringComparison.Ordinal);

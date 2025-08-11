@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -27,6 +27,11 @@ public class PNGFile : IDisposable
     {
         fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite, 4096);
     }
+    
+    public PNGFile(string filePath, int bufferSize)
+    {
+        fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite, bufferSize);
+    }
 
     /// <summary>
     /// Retrieves the first PNG chunk of the specified type from the file, or null if none were found.
@@ -38,7 +43,7 @@ public class PNGFile : IDisposable
         ReadAndCacheMetadata();
         
         var chunk = metadataChunkCache.FirstOrDefault((chunk) => chunkTypeFilter.HasFlag(chunk.ChunkTypeEnum));
-        if (chunk.IsZero())
+        if (chunk == null || chunk.IsZero())
             return null;
 
         return chunk;
@@ -55,7 +60,7 @@ public class PNGFile : IDisposable
     public PNGChunk? GetChunkReverse(PNGChunkTypeFilter chunkTypeFilter)
     {
         var chunk = ReadChunkReverse(chunkTypeFilter);
-        if (chunk.HasValue &&chunk.Value.IsZero())
+        if (chunk == null || chunk.IsZero())
             return null;
 
         return chunk;
@@ -100,12 +105,63 @@ public class PNGFile : IDisposable
         
         // Write new chunk, append rest of file
         var chunkBytes = chunk.GetBytes();
+        fileStream.SetLength(fileStream.Length + CHUNK_NONDATA_SIZE + chunk.Length);
         fileStream.Write(chunkBytes, 0, chunkBytes.Length);
         fileStream.Write(fileBytes, 0, fileBytes.Length);
         
         return true;
     }
+
+    /// <summary>
+    /// Deletes a PNG chunk from the file.
+    /// </summary>
+    /// <param name="chunk">The PNG chunk to delete. Needs a valid index set.</param>
+    /// <returns>True if the chunk was successfully deleted, otherwise false.</returns>
+    public bool DeleteChunk(PNGChunk chunk)
+    {
+        if (!chunk.ExistsInFile(fileStream))
+            return false;
+        
+        int bufferSize = 128 * 1024;
+        int deleteStart = chunk.Index;
+        int deleteLength = chunk.Length + CHUNK_NONDATA_SIZE;
+
+        long sourcePos = deleteStart + deleteLength;
+        long destPos = deleteStart;
+        byte[] buffer = new byte[bufferSize];
+
+        // Copy everything after the deleted section forward
+        while (sourcePos < fileStream.Length)
+        {
+            fileStream.Seek(sourcePos, SeekOrigin.Begin);
+            int bytesRead = fileStream.Read(buffer, 0, Math.Min(buffer.Length, (int)(fileStream.Length - sourcePos)));
+
+            if (bytesRead == 0)
+                break;
+
+            fileStream.Seek(destPos, SeekOrigin.Begin);
+            fileStream.Write(buffer, 0, bytesRead);
+
+            sourcePos += bytesRead;
+            destPos += bytesRead;
+        }
+
+        fileStream.SetLength(fileStream.Length - deleteLength);
+
+        metadataChunkCache.Remove(chunk);
+        
+        // Update the index of cached chunks
+        for (int i = 0; i < metadataChunkCache.Count; i++)
+        {
+            var cachedChunk = metadataChunkCache[i];
+            if (cachedChunk.Index > deleteStart)
+                cachedChunk.Index -= deleteLength;
+        }
+
+        return true;
+    }
     
+
     /// <summary>
     /// Retrieves all PNG metadata chunks of a specified type
     /// </summary>

@@ -290,6 +290,8 @@ declare global {
             searchType?: number
         ): Promise<string>;
         GetLastScreenshot(): Promise<string>;
+        DeleteScreenshotMetadata(path: string): Promise<boolean>;
+        DeleteAllScreenshotMetadata(): Promise<void>;
 
         // Moderations
         GetVRChatModerations(
@@ -313,8 +315,7 @@ declare global {
         // Update
         DownloadUpdate(
             fileUrl: string,
-            fileName: string,
-            hashUrl: string,
+            hashString: string,
             downloadSize: number
         ): Promise<void>;
         CancelUpdate(): Promise<void>;

@@ -16,9 +16,9 @@ namespace VRCX
         public static string ReadResolution(PNGFile pngFile)
         {
             var ihdrChunk = pngFile.GetChunk(PNGChunkTypeFilter.IHDR);
-            if (ihdrChunk.HasValue)
+            if (ihdrChunk != null)
             {
-                var resolution = ihdrChunk.Value.ReadIHDRChunkResolution();
+                var resolution = ihdrChunk.ReadIHDRChunkResolution();
                 return resolution.Item1 + "x" + resolution.Item2;
             }
 
@@ -36,15 +36,15 @@ namespace VRCX
         /// If true, the function searches from the end of the file using a reverse search bruteforce method.
         /// </param>
         /// <returns>The text associated with the specified keyword, or null if not found.</returns>
-        public static string ReadTextChunk(string keyword, PNGFile pngFile, bool legacySearch = false)
+        public static string? ReadTextChunk(string keyword, PNGFile pngFile, bool legacySearch = false)
         {
             // Search for legacy text chunks created by old vrchat mods
             if (legacySearch)
             {
                 var legacyTextChunk = pngFile.GetChunkReverse(PNGChunkTypeFilter.iTXt);
-                if (legacyTextChunk.HasValue)
+                if (legacyTextChunk != null)
                 {
-                    var data = legacyTextChunk.Value.ReadITXtChunk();
+                    var data = legacyTextChunk.ReadITXtChunk();
                     if (data.Item1 == keyword)
                         return data.Item2;
                 }
@@ -66,6 +66,22 @@ namespace VRCX
             return null;
         }
 
+        public static bool DeleteTextChunk(string keyword, PNGFile pngFile)
+        {
+            var iTXtChunk = pngFile.GetChunksOfType(PNGChunkTypeFilter.iTXt);
+            if (iTXtChunk.Count == 0)
+                return false;
+
+            for (int i = 0; i < iTXtChunk.Count; i++)
+            {
+                var data = iTXtChunk[i].ReadITXtChunk();
+                if (data.Item1 == keyword)
+                    return pngFile.DeleteChunk(iTXtChunk[i]);
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Generates a PNG text chunk ready for writing.
         /// </summary>
@@ -75,7 +91,7 @@ namespace VRCX
         public static PNGChunk GenerateTextChunk(string keyword, string text)
         {
             byte[] textBytes = Encoding.UTF8.GetBytes(text);
-            byte[] keywordBytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(keyword);
+            byte[] keywordBytes = Encoding.UTF8.GetBytes(keyword);
 
             List<byte> constructedTextChunk = new List<byte>();
             constructedTextChunk.AddRange(keywordBytes);
