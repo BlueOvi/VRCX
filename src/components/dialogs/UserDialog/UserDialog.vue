@@ -86,7 +86,8 @@
                                     slot="reference"
                                     class="dialog-title"
                                     style="margin-left: 5px; margin-right: 5px; cursor: pointer"
-                                    v-text="userDialog.ref.displayName"></span>
+                                    v-text="userDialog.ref.displayName"
+                                    @click="copyUserDisplayName(userDialog.ref.displayName)"></span>
                                 <span style="display: block; text-align: center; font-family: monospace">{{
                                     textToHex(userDialog.ref.displayName)
                                 }}</span>
@@ -446,6 +447,9 @@
                                     }}</el-dropdown-item>
                                     <el-dropdown-item icon="el-icon-message" command="Invite To Group">{{
                                         t('dialog.user.actions.invite_to_group')
+                                    }}</el-dropdown-item>
+                                    <el-dropdown-item icon="el-icon-s-operation" command="Group Moderation">{{
+                                        t('dialog.user.actions.group_moderation')
                                     }}</el-dropdown-item>
                                     <!--//- el-dropdown-item(icon="el-icon-thumb" command="Send Boop" :disabled="!currentUser.isBoopingEnabled") {{ t('dialog.user.actions.send_boop') }}-->
                                     <el-dropdown-item icon="el-icon-s-custom" command="Show Avatar Author" divided>{{
@@ -843,7 +847,7 @@
                             <el-tooltip
                                 :disabled="hideTooltips"
                                 placement="top"
-                                :content="t('dialog.user.info.open_previouse_instance')">
+                                :content="t('dialog.user.info.open_previous_instance')">
                                 <div class="x-friend-item" @click="showPreviousInstancesUserDialog(userDialog.ref)">
                                     <div class="detail">
                                         <span class="name">
@@ -882,7 +886,7 @@
                             <el-tooltip
                                 :disabled="hideTooltips || currentUser.id !== userDialog.id"
                                 placement="top"
-                                :content="t('dialog.user.info.open_previouse_instance')">
+                                :content="t('dialog.user.info.open_previous_instance')">
                                 <div class="x-friend-item" @click="showPreviousInstancesUserDialog(userDialog.ref)">
                                     <div class="detail">
                                         <span class="name">
@@ -1782,6 +1786,7 @@
         <LanguageDialog />
         <BioDialog :bio-dialog="bioDialog" />
         <PronounsDialog :pronouns-dialog="pronounsDialog" />
+        <ModerateGroupDialog />
     </safe-dialog>
 </template>
 
@@ -1855,6 +1860,7 @@
     import PronounsDialog from './PronounsDialog.vue';
     import SendInviteRequestDialog from './SendInviteRequestDialog.vue';
     import SocialStatusDialog from './SocialStatusDialog.vue';
+    import ModerateGroupDialog from '../ModerateGroupDialog.vue';
 
     const { t } = useI18n();
 
@@ -1880,7 +1886,8 @@
         leaveGroup,
         leaveGroupPrompt,
         setGroupVisibility,
-        handleGroupList
+        handleGroupList,
+        showModerateGroupDialog
     } = useGroupStore();
     const { currentUserGroups, inviteGroupDialog, inGameGroupOrder } = storeToRefs(useGroupStore());
     const { lastLocation, lastLocationDestination } = storeToRefs(useLocationStore());
@@ -2299,6 +2306,8 @@
             showInviteGroupDialog('', D.id);
             // } else if (command === 'Send Boop') {
             //     this.showSendBoopDialog(D.id);
+        } else if (command === 'Group Moderation') {
+            showModerateGroupDialog(D.id);
         } else if (command === 'Hide Avatar') {
             if (D.isHideAvatar) {
                 setPlayerModeration(D.id, 0);
