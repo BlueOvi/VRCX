@@ -4,7 +4,6 @@
         :visible.sync="groupDialog.visible"
         :show-close="false"
         width="770px"
-        top="10vh"
         class="x-dialog x-group-dialog">
         <div class="group-banner-image">
             <el-popover placement="right" width="500px" trigger="click">
@@ -413,9 +412,7 @@
                         <div v-for="room in groupDialog.instances" :key="room.tag" style="width: 100%">
                             <div style="margin: 5px 0">
                                 <Location :location="room.tag" style="display: inline-block" />
-                                <el-tooltip placement="top" content="Invite yourself" :disabled="hideTooltips">
-                                    <InviteYourself :location="room.tag" style="margin-left: 5px" />
-                                </el-tooltip>
+                                <InviteYourself :location="room.tag" style="margin-left: 5px" />
                                 <el-tooltip placement="top" content="Refresh player count" :disabled="hideTooltips">
                                     <el-button
                                         size="mini"

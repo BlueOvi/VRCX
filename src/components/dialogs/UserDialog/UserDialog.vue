@@ -4,8 +4,7 @@
         class="x-dialog x-user-dialog"
         :visible.sync="userDialog.visible"
         :show-close="false"
-        width="770px"
-        top="10vh">
+        width="770px">
         <div v-loading="userDialog.loading">
             <div style="display: flex">
                 <el-popover
@@ -568,15 +567,10 @@
                             <div style="flex: none">
                                 <template v-if="isRealInstance(userDialog.$location.tag)">
                                     <Launch :location="userDialog.$location.tag" />
-                                    <el-tooltip
-                                        placement="top"
-                                        :content="t('dialog.user.info.self_invite_tooltip')"
-                                        :disabled="hideTooltips">
-                                        <InviteYourself
-                                            :location="userDialog.$location.tag"
-                                            :shortname="userDialog.$location.shortName"
-                                            style="margin-left: 5px" />
-                                    </el-tooltip>
+                                    <InviteYourself
+                                        :location="userDialog.$location.tag"
+                                        :shortname="userDialog.$location.shortName"
+                                        style="margin-left: 5px" />
                                     <el-tooltip
                                         placement="top"
                                         :content="t('dialog.user.info.refresh_instance_info')"
@@ -1895,13 +1889,12 @@
     const { friendLogTable } = storeToRefs(useFriendStore());
     const { getFriendRequest, handleFriendDelete } = useFriendStore();
     const { previousImagesDialogVisible, previousImagesTable } = storeToRefs(useGalleryStore());
-    const { clearInviteImageUpload, showGalleryDialog, checkPreviousImageAvailable, showFullscreenImageDialog } =
-        useGalleryStore();
+    const { clearInviteImageUpload, checkPreviousImageAvailable, showFullscreenImageDialog } = useGalleryStore();
     const { isGameRunning } = storeToRefs(useGameStore());
     const { logout } = useAuthStore();
     const { cachedConfig } = storeToRefs(useAuthStore());
     const { applyPlayerModeration, handlePlayerModerationDelete } = useModerationStore();
-    const { shiftHeld } = storeToRefs(useUiStore());
+    const { shiftHeld, menuActiveIndex } = storeToRefs(useUiStore());
 
     watch(
         () => userDialog.value.loading,
@@ -2301,7 +2294,9 @@
         } else if (command === 'Previous Instances') {
             showPreviousInstancesUserDialog(D.ref);
         } else if (command === 'Manage Gallery') {
-            showGalleryDialog();
+            // redirect to tools tab
+            userDialog.value.visible = false;
+            menuActiveIndex.value = 'tools';
         } else if (command === 'Invite To Group') {
             showInviteGroupDialog('', D.id);
             // } else if (command === 'Send Boop') {
@@ -2543,6 +2538,7 @@
     }
 
     async function getUserGroups(userId) {
+        exitEditModeCurrentUserGroups();
         userDialog.value.isGroupsLoading = true;
         userGroups.value = {
             groups: [],
@@ -2864,9 +2860,6 @@
         userRequest.saveCurrentUser({
             allowAvatarCopying: !currentUser.value.allowAvatarCopying
         });
-        //     .then((args) => {
-        //     return args;
-        // });
     }
 
     function resetHome() {

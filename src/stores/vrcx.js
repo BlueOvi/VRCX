@@ -65,6 +65,12 @@ export const useVrcxStore = defineStore('Vrcx', () => {
 
     async function init() {
         if (LINUX) {
+            window.electron.ipcRenderer.on('launch-command', (command) => {
+                if (command) {
+                    eventLaunchCommand(command);
+                }
+            });
+
             window.electron.onWindowPositionChanged((event, position) => {
                 state.locationX = position.x;
                 state.locationY = position.y;
@@ -766,8 +772,8 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         maxTableSize,
         showConsole,
         clearVRCXCache,
-        startupLaunchCommand,
         eventVrcxMessage,
+        eventLaunchCommand,
         showRegistryBackupDialog,
         checkAutoBackupRestoreVrcRegistry,
         tryAutoBackupVrcRegistry,

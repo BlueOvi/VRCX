@@ -232,7 +232,11 @@
                                     {{ t('dialog.world.actions.new_instance') }}
                                 </el-dropdown-item>
                                 <el-dropdown-item icon="el-icon-message" command="New Instance and Self Invite">
-                                    {{ t('dialog.world.actions.new_instance_and_self_invite') }}
+                                    {{
+                                        isGameRunning
+                                            ? t('dialog.world.actions.new_instance_and_open_in_vrchat')
+                                            : t('dialog.world.actions.new_instance_and_self_invite')
+                                    }}
                                 </el-dropdown-item>
                                 <el-dropdown-item
                                     v-if="
@@ -348,15 +352,10 @@
                                     :currentuserid="currentUser.id"
                                     :worlddialogshortname="worldDialog.$location.shortName" />
                                 <Launch :location="room.tag" style="margin-left: 5px" />
-                                <el-tooltip
-                                    placement="top"
-                                    :content="t('dialog.world.instances.self_invite_tooltip')"
-                                    :disabled="hideTooltips">
-                                    <InviteYourself
-                                        :location="room.$location.tag"
-                                        :shortname="room.$location.shortName"
-                                        style="margin-left: 5px" />
-                                </el-tooltip>
+                                <InviteYourself
+                                    :location="room.$location.tag"
+                                    :shortname="room.$location.shortName"
+                                    style="margin-left: 5px" />
                                 <el-tooltip
                                     placement="top"
                                     :content="t('dialog.world.instances.refresh_instance_info')"
