@@ -7,12 +7,12 @@
 using NLog;
 using NLog.Targets;
 using System;
-using System.Data.SQLite;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Data.Sqlite;
 
 namespace VRCX
 {
@@ -24,7 +24,7 @@ namespace VRCX
         public static string Version { get; private set; }
         public static bool LaunchDebug;
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-        public static VRCXVRInterface VRCXVRInstance { get; private set; }
+        public static VRCXVRInterface VRCXVRInstance { get; set; }
         public static AppApi AppApiInstance { get; private set; }
         public static AppApiVr AppApiVrInstance { get; private set; }
 
@@ -172,7 +172,7 @@ namespace VRCX
 
             #region Handle Database Error
 
-            catch (SQLiteException e)
+            catch (SqliteException e)
             {
                 logger.Fatal(e, "Unhandled SQLite Exception, closing.");
                 var messageBoxResult = MessageBox.Show(
@@ -230,7 +230,7 @@ namespace VRCX
                 logger.Info("Launch Command: {0}", StartupArgs.LaunchArguments.LaunchCommand);
             logger.Debug("Wine detection: {0}", Wine.GetIfWine());
 
-            SQLiteLegacy.Instance.Init();
+            SQLite.Instance.Init();
             AppApiInstance = new AppApiCef();
 
             AppApiVrInstance = new AppApiVrCef();
@@ -262,7 +262,7 @@ namespace VRCX
             Discord.Instance.Exit();
             SystemMonitorCef.Instance.Exit();
             VRCXStorage.Instance.Save();
-            SQLiteLegacy.Instance.Exit();
+            SQLite.Instance.Exit();
             ProcessMonitor.Instance.Exit();
         }
 #else
